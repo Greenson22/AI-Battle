@@ -1,76 +1,86 @@
 # terrain.py
+
 import pygame
 import numpy as np
 from perlin_noise import PerlinNoise
 import os
-from settings import * # Pastikan semua pengaturan ter-import
+from settings import *
 
 class Terrain:
-    # vvv UBAH BARIS INI vvv
-    def __init__(self, width, height, scale=TERRAIN_SCALE, octaves=6, persistence=0.5, lacunarity=2.0, seed=None):
-    # ^^^ UBAH BARIS INI ^^^
+    def __init__(self, width, height, scale=TERRAIN_SCALE, octaves=6, seed=None):
         self.width = width
         self.height = height
-        # Parameter 'scale' sekarang menggunakan nilai default dari settings.py
         self.scale = scale
         self.octaves = octaves
         self.seed = seed if seed is not None else np.random.randint(0, 100)
-        self.terrain_map = self.generate_world()
-        self.terrain_surface = self.create_terrain_surface()
 
+        self.terrain_map = self.load_map_data(WORLD_FILE)
+        self.terrain_surface = self.load_map_image(WORLD_IMAGE_FILE)
+
+        if self.terrain_map is None or self.terrain_surface is None:
+            print("Membuat data terrain baru (mungkin perlu beberapa saat)...")
+            self.terrain_map = self.generate_world()
+            self.terrain_surface = self.create_terrain_surface_optimized()
+            self.save_world()
+
+    # vvv FUNGSI DIPERBAIKI vvv
     def generate_world(self):
+        """Membuat peta noise. Kembali menggunakan loop karena .map tidak ada."""
         noise = PerlinNoise(octaves=self.octaves, seed=self.seed)
-        
         world = np.zeros((self.width, self.height))
+        # Perulangan ini memang lebih lambat, tapi hanya dijalankan sekali
         for i in range(self.width):
             for j in range(self.height):
-                # Pemanggilan noise menggunakan self.scale yang sudah diperbarui
                 world[i][j] = noise([i / self.scale, j / self.scale])
-                
+        
         world = (world - np.min(world)) / (np.max(world) - np.min(world))
         return world
+    # ^^^ FUNGSI DIPERBAIKI ^^^
 
-    # ... (sisa kelas tidak berubah) ...
-    def get_biome(self, value):
-        if value < TINGKAT_AIR: return 'air'
-        elif value < TINGKAT_PASIR: return 'pasir'
-        elif value < TINGKAT_RUMPUT: return 'rumput'
-        elif value < TINGKAT_HUTAN: return 'hutan'
-        else: return 'batu'
+    def create_terrain_surface_optimized(self):
+        """Membuat surface menggunakan NumPy (Sangat Cepat)."""
+        image_array = np.zeros((self.width, self.height, 3), dtype=np.uint8)
+        image_array[self.terrain_map < TINGKAT_AIR] = WARNA_TERRAIN['air']
+        image_array[(self.terrain_map >= TINGKAT_AIR) & (self.terrain_map < TINGKAT_PASIR)] = WARNA_TERRAIN['pasir']
+        image_array[(self.terrain_map >= TINGKAT_PASIR) & (self.terrain_map < TINGKAT_RUMPUT)] = WARNA_TERRAIN['rumput']
+        image_array[(self.terrain_map >= TINGKAT_RUMPUT) & (self.terrain_map < TINGKAT_HUTAN)] = WARNA_TERRAIN['hutan']
+        image_array[self.terrain_map >= TINGKAT_HUTAN] = WARNA_TERRAIN['batu']
+        return pygame.surfarray.make_surface(image_array)
 
-    def create_terrain_surface(self):
-        surface = pygame.Surface((self.width, self.height))
-        for i in range(self.width):
-            for j in range(self.height):
-                noise_val = self.terrain_map[i][j]
-                biome = self.get_biome(noise_val)
-                color = WARNA_TERRAIN[biome]
-                surface.set_at((i, j), color)
-        return surface
+    def get_biome_at(self, x, y):
+        """Mendapatkan tipe biome pada koordinat x, y."""
+        if 0 <= x < self.width and 0 <= y < self.height:
+            val = self.terrain_map[int(x)][int(y)]
+            if val < TINGKAT_AIR: return 'air'
+            if val < TINGKAT_PASIR: return 'pasir'
+            if val < TINGKAT_RUMPUT: return 'rumput'
+            if val < TINGKAT_HUTAN: return 'hutan'
+            return 'batu'
+        return 'batu' # Default jika di luar batas
 
     def draw(self, screen):
         screen.blit(self.terrain_surface, (0, 0))
 
-    def get_terrain_type_at(self, x, y):
-        if 0 <= x < self.width and 0 <= y < self.height:
-            val = self.terrain_map[int(x)][int(y)]
-            return self.get_biome(val)
-        return 'batu'
-
-    def save_world(self, filename="data/world.npy"):
+    def save_world(self):
         if not os.path.exists('data'):
             os.makedirs('data')
-        np.save(filename, self.terrain_map)
-        print(f" Dunia berhasil disimpan ke {filename}")
+        np.save(WORLD_FILE, self.terrain_map)
+        pygame.image.save(self.terrain_surface, WORLD_IMAGE_FILE)
+        print(f"Dunia (data & gambar) berhasil disimpan.")
+
+    def load_map_data(self, filename):
+        if os.path.exists(filename):
+            return np.load(filename)
+        return None
+
+    def load_map_image(self, filename):
+        if os.path.exists(filename):
+            print(f"Memuat gambar peta dari {filename} (CEPAT)...")
+            return pygame.image.load(filename).convert()
+        return None
 
     @classmethod
-    def load_world(cls, filename="data/world.npy"):
-        if os.path.exists(filename):
-            terrain_map = np.load(filename)
-            width, height = terrain_map.shape
-            terrain = cls(width, height)
-            terrain.terrain_map = terrain_map
-            terrain.terrain_surface = terrain.create_terrain_surface()
-            print(f" Dunia berhasil dimuat dari {filename}")
-            return terrain
-        return None
+    def create_new_world(cls, width, height):
+        if os.path.exists(WORLD_FILE): os.remove(WORLD_FILE)
+        if os.path.exists(WORLD_IMAGE_FILE): os.remove(WORLD_IMAGE_FILE)
+        return cls(width, height)

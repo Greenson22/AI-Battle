@@ -62,3 +62,4 @@ PENGARUH_TERRAIN = {
 # --- PENGATURAN SIMPAN & MUAT ---
 BRAIN_FILE = 'data/fittest_brains.npz'
 WORLD_FILE = 'data/world.npy' # Tambahkan ini
+WORLD_IMAGE_FILE = 'data/world.png' # File untuk menyimpan gambar terrain
