@@ -11,8 +11,8 @@ WARNA_RUMPUT = (34, 139, 34)  # <-- Diubah dari WARNA_KRISTAL
 WARNA_TEKS = (255, 255, 255)
 
 # --- PENGATURAN SIMULASI & EVOLUSI ---
-JUMLAH_SEL_AWAL = 50
-JUMLAH_RUMPUT = 80
+JUMLAH_SEL_AWAL = 40
+JUMLAH_RUMPUT = 40
 GENERATION_TIME_SECS = 15  # Detik per generasi
 SELECTION_PERCENT = 0.25  # Persentase sel terbaik yang bertahan
 MUTATION_RATE = 0.1  # 10% kemungkinan mutasi pada setiap bobot
@@ -35,7 +35,7 @@ JARAK_DETEKSI_MAKANAN = 100 # Jarak dalam piksel di mana sel akan mulai 'foragin
 # Input: [jarak_rumput, sudut_rumput, energi_sendiri] # <-- Komentar diperbarui
 NUM_INPUTS = 3
 NUM_HIDDEN = 10
-NUM_OUTPUTS = 3  # Output: [belok_kiri, belok_kanan, kecepatan]
+NUM_OUTPUTS = 7  # Output: [belok_kiri, belok_kanan, kecepatan]
 
 # --- PENGATURAN TERRAIN ---
 TERRAIN_SCALE = 1000.0

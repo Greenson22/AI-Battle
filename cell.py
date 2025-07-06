@@ -16,17 +16,19 @@ class Cell:
         self.angle: float = random.uniform(0, 2 * math.pi)
         self.gender = random.choice(['male', 'female'])
         
+        # --- PERUBAHAN: Definisikan daftar state yang mungkin ---
+        self.possible_states = ['idle', 'wandering', 'foraging', 'running']
         self.state: str = 'wandering'
         
         self.fitness: int = 0
         self.current_speed: float = 0
+        # Otak sekarang akan diinisialisasi dengan 7 output sesuai settings.py
         self.brain: NeuralNetwork = brain or NeuralNetwork(NUM_INPUTS, NUM_HIDDEN, NUM_OUTPUTS)
         
         self.leg_animation_cycle = random.uniform(0, 360)
         self.leg_length = RADIUS_SEL * 1.5
         self.leg_swing_arc = math.pi / 4
         
-        # --- PERUBAHAN: Tambahkan atribut untuk menyimpan target rumput ---
         self.target_grass = None
 
         if self.gender == 'male':
@@ -36,56 +38,49 @@ class Cell:
             self.base_color = (255, 105, 180)
             self.outline_color = (100, 20, 60)
 
-    # --- PERUBAHAN: Optimalkan pencarian rumput ---
     def update(self, grass_patches: list, biome: str) -> str:
-        # Cari rumput terdekat sekali saja per update
         self.target_grass = self._find_nearest_grass(grass_patches)
         
-        # Berikan target ke metode lain
         inputs = self._get_brain_inputs(self.target_grass)
         outputs = self.brain.predict(np.array(inputs))
         
-        self._update_state(self.target_grass, outputs)
-        
+        # --- PERUBAHAN: Perbarui state dan gerakan berdasarkan output otak ---
+        self._update_state_from_brain(outputs)
         self._process_brain_outputs(outputs, biome)
+        
         self._move()
         self._update_status(biome)
         self._update_legs()
         return "hidup" if self.is_alive() else "mati"
 
-    # --- PERUBAHAN: Terima argumen `show_debug` untuk menampilkan info tambahan ---
     def draw(self, screen: pygame.Surface, show_debug: bool = False):
         self._draw_legs(screen)
         self._draw_body(screen)
         self._draw_direction_indicator(screen)
         self._draw_energy_bar(screen)
         
-        # Jika mode debug aktif, tampilkan state dan garis target
         if show_debug:
             self._draw_state_text(screen)
             self._draw_foraging_line(screen)
 
-    # --- PERUBAHAN: Tambahkan metode untuk menggambar garis ke target ---
     def _draw_foraging_line(self, screen: pygame.Surface):
-        """Menggambar garis dari sel ke rumput target jika sedang foraging."""
         if self.state == 'foraging' and self.target_grass:
             distance = math.hypot(self.target_grass.x - self.x, self.target_grass.y - self.y)
             if distance < JARAK_DETEKSI_MAKANAN:
-                line_color = (255, 255, 0) # Kuning
+                line_color = (255, 255, 0)
                 pygame.draw.line(screen, line_color, (self.x, self.y), (self.target_grass.x, self.target_grass.y), 1)
 
-    # --- PERUBAHAN: Terima `nearest_grass` sebagai argumen ---
-    def _update_state(self, nearest_grass: Grass, outputs: np.ndarray):
-        _, _, speed_control = outputs
+    # --- PERUBAHAN: Metode ini sekarang sepenuhnya digerakkan oleh ANN ---
+    def _update_state_from_brain(self, outputs: np.ndarray):
+        """Memilih state berdasarkan output dari Neural Network."""
+        # Ambil 4 output terakhir yang didedikasikan untuk state
+        state_outputs = outputs[3:]
         
-        if self.energy < ENERGI_AWAL * 0.25:
-            self.state = 'idle'
-        elif nearest_grass and math.hypot(nearest_grass.x - self.x, nearest_grass.y - self.y) < JARAK_DETEKSI_MAKANAN:
-            self.state = 'foraging'
-        elif speed_control > 0.75:
-             self.state = 'running'
-        else:
-            self.state = 'wandering'
+        # Cari indeks dari neuron state dengan aktivasi tertinggi
+        chosen_state_index = np.argmax(state_outputs)
+        
+        # Tetapkan state berdasarkan indeks tersebut
+        self.state = self.possible_states[chosen_state_index]
 
     def is_alive(self) -> bool:
         return self.energy > 0
@@ -115,7 +110,6 @@ class Cell:
         end_y2 = self.y + self.leg_length * math.sin(angle2)
         pygame.draw.line(screen, leg_color, (self.x, self.y), (end_x2, end_y2), leg_width)
 
-    # --- PERUBAHAN: Terima `nearest_grass` sebagai argumen ---
     def _get_brain_inputs(self, nearest_grass: Grass) -> list:
         if not nearest_grass:
             return [1.0, 0.0, self.energy / ENERGI_AWAL]
@@ -135,8 +129,11 @@ class Cell:
         if not grass_patches: return None
         return min(grass_patches, key=lambda g: math.hypot(g.x - self.x, g.y - self.y))
 
+    # --- PERUBAHAN: Sesuaikan cara membaca output otak ---
     def _process_brain_outputs(self, outputs: np.ndarray, terrain_type: str):
-        turn_left, turn_right, speed_control = outputs
+        # 3 output pertama tetap untuk gerakan
+        turn_left, turn_right, speed_control = outputs[:3]
+        
         terrain_modifier = PENGARUH_TERRAIN[terrain_type]
         max_speed_on_terrain = KECEPATAN_MAKS_SEL * terrain_modifier['speed_multiplier']
 
