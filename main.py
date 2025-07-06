@@ -8,33 +8,72 @@ from settings import *
 from cell import Cell, NeuralNetwork
 from crystal import Crystal
 
-# Kelas Button dan MainMenu tidak ada perubahan dari versi sebelumnya, jadi dilewati untuk keringkasan
-
+# --- KELAS UNTUK ELEMEN UI ---
 class Button:
-    # ... (Kode kelas Button tetap sama)
+    """Kelas pembantu untuk membuat tombol yang bisa diklik."""
     def __init__(self, x, y, width, height, text, color, hover_color):
         self.rect = pygame.Rect(x, y, width, height)
         self.text = text
         self.color = color
         self.hover_color = hover_color
         self.is_hovered = False
+
     def draw(self, screen, font):
         current_color = self.hover_color if self.is_hovered else self.color
         pygame.draw.rect(screen, current_color, self.rect, border_radius=10)
         text_surf = font.render(self.text, True, WARNA_TEKS)
         text_rect = text_surf.get_rect(center=self.rect.center)
         screen.blit(text_surf, text_rect)
+
     def check_hover(self, mouse_pos):
         self.is_hovered = self.rect.collidepoint(mouse_pos)
+
     def is_clicked(self, event):
         return event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.is_hovered
 
-class MainMenu:
-    # ... (Kode kelas MainMenu tetap sama)
-    def __init__(self, screen):
+# --- KELAS UNTUK MENU-MENU ---
+class BaseMenu:
+    """Kelas dasar untuk semua menu dengan fungsionalitas umum."""
+    def __init__(self, screen, title):
         self.screen = screen
-        self.font = pygame.font.Font(None, 50)
+        self.font_title = pygame.font.Font(None, 60)
+        self.font_button = pygame.font.Font(None, 50)
         self.running = True
+        self.title = title
+        self.buttons = {}
+
+    def run(self):
+        while self.running:
+            mouse_pos = pygame.mouse.get_pos()
+            
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return "quit"
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    return "back" # Opsi untuk kembali
+                for mode, button in self.buttons.items():
+                    if button.is_clicked(event):
+                        return mode
+
+            for button in self.buttons.values():
+                button.check_hover(mouse_pos)
+
+            self.draw()
+            pygame.display.flip()
+        return "back"
+
+    def draw(self):
+        self.screen.fill(WARNA_LATAR)
+        title_surf = self.font_title.render(self.title, True, WARNA_TEKS)
+        title_rect = title_surf.get_rect(center=(LEBAR_LAYAR / 2, 100))
+        self.screen.blit(title_surf, title_rect)
+        for button in self.buttons.values():
+            button.draw(self.screen, self.font_button)
+
+class MainMenu(BaseMenu):
+    """Menu utama aplikasi."""
+    def __init__(self, screen):
+        super().__init__(screen, "Simulasi Evolusi Sel")
         btn_width, btn_height = 300, 60
         btn_x = (LEBAR_LAYAR - btn_width) / 2
         self.buttons = {
@@ -42,27 +81,23 @@ class MainMenu:
             "sandbox": Button(btn_x, 280, btn_width, btn_height, "Buka Sandbox", (0, 150, 100), (0, 200, 150)),
             "quit": Button(btn_x, 360, btn_width, btn_height, "Keluar", (200, 50, 50), (255, 100, 100))
         }
-    def run(self):
-        while self.running:
-            mouse_pos = pygame.mouse.get_pos()
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    return "quit"
-                for mode, button in self.buttons.items():
-                    if button.is_clicked(event):
-                        return mode
-            for button in self.buttons.values():
-                button.check_hover(mouse_pos)
-            self.screen.fill(WARNA_LATAR)
-            title_surf = self.font.render("Simulasi Evolusi Sel", True, WARNA_TEKS)
-            title_rect = title_surf.get_rect(center=(LEBAR_LAYAR/2, 100))
-            self.screen.blit(title_surf, title_rect)
-            for button in self.buttons.values():
-                button.draw(self.screen, self.font)
-            pygame.display.flip()
-        return "quit"
+        
+# ✨ KELAS MENU BARU UNTUK OPSI LATIHAN ✨
+class TrainingStartMenu(BaseMenu):
+    """Sub-menu untuk memilih mode latihan."""
+    def __init__(self, screen):
+        super().__init__(screen, "Mode Latihan")
+        btn_width, btn_height = 400, 60
+        btn_x = (LEBAR_LAYAR - btn_width) / 2
+        self.buttons = {
+            "new_training": Button(btn_x, 200, btn_width, btn_height, "Mulai dari Awal", (20, 140, 180), (30, 160, 200)),
+            "continue_training": Button(btn_x, 280, btn_width, btn_height, "Lanjutkan dari File", (20, 180, 140), (30, 200, 160)),
+        }
 
+
+# --- KELAS UNTUK SIMULASI ---
 class BaseSimulation:
+    # ... (Kode kelas ini tidak berubah, dilewati untuk keringkasan)
     def __init__(self, title="Simulasi"):
         self.screen = pygame.display.set_mode((LEBAR_LAYAR, TINGGI_LAYAR))
         pygame.display.set_caption(title)
@@ -71,31 +106,23 @@ class BaseSimulation:
         self.running = True
         self.cells = []
         self.crystals = [Crystal() for _ in range(JUMLAH_KRISTAL)]
-
     def run(self):
         while self.running:
             self._handle_events()
             self._update_simulation()
             self._draw_elements()
             self.clock.tick(FRAME_RATE)
-
     def _handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                # Menutup aplikasi jika tombol close jendela ditekan
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    self.running = False # Kembali ke menu utama
-                # Event lain akan ditangani oleh kelas turunan
+                    self.running = False
                 self._handle_key_press(event)
-
     def _handle_key_press(self, event):
-        """Metode kosong untuk ditimpa oleh kelas turunan."""
         pass
-        
-    # ... Sisa metode di BaseSimulation tidak berubah ...
     def _update_simulation(self):
         for cell in self.cells[:]:
             if cell.update(self.crystals) == "mati":
@@ -123,61 +150,60 @@ class BaseSimulation:
 
 
 class TrainingMode(BaseSimulation):
-    def __init__(self):
+    # ✨ DIUBAH: Tambahkan parameter `start_from_scratch` ✨
+    def __init__(self, start_from_scratch=True):
         super().__init__(title="Mode Latihan")
-        self.cells = [Cell() for _ in range(JUMLAH_SEL_AWAL)]
         self.generation_count = 1
         self.generation_timer = 0
         self.generation_frame_limit = GENERATION_TIME_SECS * FRAME_RATE
-        # ✨ Atribut baru untuk indikator simpan
-        self.save_indicator_timer = 0 
+        self.save_indicator_timer = 0
 
+        if start_from_scratch:
+            print("Memulai sesi latihan baru dari awal.")
+            self.cells = [Cell() for _ in range(JUMLAH_SEL_AWAL)]
+        else:
+            print("Mencoba melanjutkan latihan dari file...")
+            trained_brains = NeuralNetwork.load_brains(BRAIN_FILE)
+            if not trained_brains:
+                print("File tidak ditemukan. Memulai dari awal sebagai gantinya.")
+                self.cells = [Cell() for _ in range(JUMLAH_SEL_AWAL)]
+            else:
+                print("Berhasil memuat otak. Melanjutkan latihan...")
+                # Gunakan otak yang dimuat sebagai populasi awal
+                self.cells = self._create_new_population(trained_brains)
+                
+    # ... (Sisa metode di TrainingMode tidak berubah, dilewati) ...
     def _handle_key_press(self, event):
-        """Menangani penekanan tombol 'S' untuk menyimpan."""
         if event.key == pygame.K_s:
             self._save_fittest_brains()
-            
     def _update_simulation(self):
         super()._update_simulation()
         self.generation_timer += 1
-        
-        # Mengurangi timer indikator setiap frame
         if self.save_indicator_timer > 0:
             self.save_indicator_timer -= 1
-            
         if self.generation_timer >= self.generation_frame_limit or not self.cells:
             self._evolve_next_generation()
-
     def _save_fittest_brains(self):
-        """Menyimpan otak dari sel-sel terbaik saat ini."""
         if not self.cells:
             print("Tidak ada sel untuk disimpan.")
             return
         self.cells.sort(key=lambda c: c.fitness, reverse=True)
-        # Ambil hingga 10 otak teratas untuk disimpan
-        num_to_save = min(len(self.cells), 10) 
+        num_to_save = min(len(self.cells), 10)
         fittest_brains = [cell.brain for cell in self.cells[:num_to_save]]
         NeuralNetwork.save_brains(BRAIN_FILE, fittest_brains)
-        # ✨ Atur timer untuk menampilkan indikator selama 2 detik (120 frame)
-        self.save_indicator_timer = 120 
-
+        self.save_indicator_timer = 120
     def _draw_info_text(self):
         super()._draw_info_text()
         info_gen = self.font.render(f"Generasi: {self.generation_count}", True, WARNA_TEKS)
         info_time = self.font.render(f"Waktu: {self.generation_timer // FRAME_RATE}s", True, WARNA_TEKS)
         info_save_prompt = self.font.render("Tekan 'S' untuk menyimpan", True, WARNA_TEKS)
-        
         self.screen.blit(info_gen, (10, 10))
         self.screen.blit(info_time, (10, 70))
         self.screen.blit(info_save_prompt, (LEBAR_LAYAR - info_save_prompt.get_width() - 10, 10))
-        
-        # ✨ Gambar indikator jika timer aktif
         if self.save_indicator_timer > 0:
             save_indicator_text = self.font.render("Otak berhasil disimpan!", True, (100, 255, 100))
             text_rect = save_indicator_text.get_rect(topright=(LEBAR_LAYAR - 10, 40))
             self.screen.blit(save_indicator_text, text_rect)
-            
-    # ... Sisa metode di TrainingMode tidak berubah ...
     def _evolve_next_generation(self):
         self.generation_count += 1
         self.generation_timer = 0
@@ -204,6 +230,7 @@ class TrainingMode(BaseSimulation):
         return new_generation
 
 class SandboxMode(BaseSimulation):
+    # ... (Kode kelas ini tidak berubah, dilewati) ...
     def __init__(self):
         super().__init__(title="Mode Sandbox")
         trained_brains = NeuralNetwork.load_brains(BRAIN_FILE)
@@ -214,23 +241,35 @@ class SandboxMode(BaseSimulation):
                 brain_to_use = random.choice(trained_brains)
                 self.cells.append(Cell(brain=brain_to_use))
 
+# --- FUNGSI UTAMA ---
 def main():
-    """Fungsi utama untuk menjalankan aplikasi."""
+    """Fungsi utama untuk menjalankan aplikasi dan menangani navigasi menu."""
     pygame.init()
     screen = pygame.display.set_mode((LEBAR_LAYAR, TINGGI_LAYAR))
     
     while True:
-        menu = MainMenu(screen)
-        choice = menu.run()
+        main_menu = MainMenu(screen)
+        main_choice = main_menu.run()
 
-        if choice == "train":
-            game = TrainingMode()
-            game.run()
-        elif choice == "sandbox":
+        if main_choice == "train":
+            # Tampilkan sub-menu latihan
+            training_menu = TrainingStartMenu(screen)
+            training_choice = training_menu.run()
+
+            game = None
+            if training_choice == "new_training":
+                game = TrainingMode(start_from_scratch=True)
+            elif training_choice == "continue_training":
+                game = TrainingMode(start_from_scratch=False)
+            
+            if game:
+                game.run()
+
+        elif main_choice == "sandbox":
             game = SandboxMode()
             game.run()
-        elif choice == "quit":
-            break # Keluar dari loop utama
+        elif main_choice == "quit":
+            break
 
     pygame.quit()
     sys.exit()
