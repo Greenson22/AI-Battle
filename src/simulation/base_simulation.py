@@ -44,6 +44,7 @@ class BaseSimulation:
     def _update_simulation(self):
         for cell in self.cells[:]:
             biome_at_cell = self.terrain.get_biome_at(cell.x, cell.y)
+            # Logika kematian karena tenggelam/kehabisan energi ada di dalam cell.update
             if cell.update(self.crystals, biome_at_cell) == "mati":
                 self.cells.remove(cell)
             else:
@@ -57,12 +58,36 @@ class BaseSimulation:
                 self.crystals.append(Crystal())
                 break
 
+    # vvvv [PERUBAHAN UTAMA DI SINI] vvvv
     def _draw_elements(self):
         self.terrain.draw(self.screen)
+
+        # Logika untuk outline Emas & Perak
+        if self.cells:
+            # Urutkan sel berdasarkan fitness, dari tertinggi ke terendah
+            sorted_cells = sorted(self.cells, key=lambda c: c.fitness, reverse=True)
+            
+            # Reset semua outline ke default (hitam) terlebih dahulu
+            for cell in self.cells:
+                # Pastikan sel punya atribut outline_color (seharusnya sudah dari jawaban sebelumnya)
+                if hasattr(cell, 'outline_color'):
+                    cell.outline_color = (10, 10, 10) # Hitam
+
+            # Atur warna outline untuk sel terbaik pertama (Emas)
+            if len(sorted_cells) > 0 and hasattr(sorted_cells[0], 'outline_color'):
+                sorted_cells[0].outline_color = (255, 215, 0) # Gold
+            
+            # Atur warna outline untuk sel terbaik kedua (Perak)
+            if len(sorted_cells) > 1 and hasattr(sorted_cells[1], 'outline_color'):
+                sorted_cells[1].outline_color = (192, 192, 192) # Silver
+        
+        # Gambar semua entitas
         for entity in self.crystals + self.cells:
             entity.draw(self.screen)
+            
         self._draw_info_text()
         pygame.display.flip()
+    # ^^^^ [AKHIR PERUBAHAN] ^^^^
 
     def _draw_info_text(self):
         info_sel = self.font.render(f"Jumlah Sel: {len(self.cells)}", True, WARNA_TEKS)

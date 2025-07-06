@@ -2,13 +2,11 @@
 
 import pygame
 import sys
-import os # <-- Tambahkan import ini
+import os
 
-# vvv TAMBAHKAN BLOK KODE INI vvv
 # Menambahkan direktori root proyek ke path Python
 # Ini memastikan semua impor 'from src...' berfungsi dengan benar
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-# ^^^ TAMBAHKAN BLOK KODE INI ^^^
 
 from settings import LEBAR_LAYAR, TINGGI_LAYAR
 from terrain import Terrain
@@ -18,7 +16,6 @@ from src.ui.menus import MainMenu, TrainingStartMenu, WorldMenu
 from src.simulation.modes import TrainingMode, SandboxMode
 from src.utils.helpers import show_loading_screen
 
-# ... sisa kode main.py tidak ada yang berubah ...
 def main():
     """Fungsi utama untuk menjalankan aplikasi dan menangani navigasi menu."""
     pygame.init()

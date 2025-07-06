@@ -24,13 +24,18 @@ class Cell:
         self.leg_length = RADIUS_SEL * 1.5
         self.leg_swing_arc = math.pi / 4
 
+        # vvvv [PERUBAHAN] vvvv
+        # Warna outline kini menjadi atribut yang bisa diubah
+        self.outline_color = (10, 10, 10) # Default: Hitam
+        # ^^^^ [PERUBAHAN] ^^^^
+
     def update(self, crystals: list, biome: str) -> str:
         """Memperbarui status sel dan animasi kaki."""
         inputs = self._get_brain_inputs(crystals)
         outputs = self.brain.predict(np.array(inputs))
         self._process_brain_outputs(outputs, biome)
         self._move()
-        self._update_status(biome) # <-- Logika kematian ada di sini
+        self._update_status(biome)
         self._update_legs()
         return "hidup" if self.is_alive() else "mati"
 
@@ -58,13 +63,11 @@ class Cell:
         leg_width = 3
         current_swing = math.sin(math.radians(self.leg_animation_cycle)) * self.leg_swing_arc
         
-        # Kaki Kanan
         angle1 = self.angle + math.pi / 2 + current_swing
         end_x1 = self.x + self.leg_length * math.cos(angle1)
         end_y1 = self.y + self.leg_length * math.sin(angle1)
         pygame.draw.line(screen, leg_color, (self.x, self.y), (end_x1, end_y1), leg_width)
 
-        # Kaki Kiri
         angle2 = self.angle - math.pi / 2 - current_swing
         end_x2 = self.x + self.leg_length * math.cos(angle2)
         end_y2 = self.y + self.leg_length * math.sin(angle2)
@@ -96,27 +99,25 @@ class Cell:
         max_speed_on_terrain = KECEPATAN_MAKS_SEL * terrain_modifier['speed_multiplier']
         self.current_speed = (speed_control + 1) / 2 * max_speed_on_terrain
 
-    # vvvv INI PERUBAHAN UTAMANYA vvvv
     def _update_status(self, terrain_type: str):
-        """Memperbarui energi sel berdasarkan medan."""
-        
-        # Jika sel berada di air, kurangi energi dengan cepat (tenggelam).
         if terrain_type == 'air':
             self.energy -= ENERGI_TENGGELAM
-            self.fitness -= 2 # Beri penalti fitness karena masuk air
+            self.fitness -= 2
         else:
-            # Jika di darat atau pasir, gunakan perhitungan energi normal.
             terrain_modifier = PENGARUH_TERRAIN[terrain_type]
             speed_ratio = self.current_speed / KECEPATAN_MAKS_SEL if KECEPATAN_MAKS_SEL > 0 else 0
             base_energy_cost = ENERGI_DIAM + (speed_ratio * ENERGI_BERGERAK)
             total_energy_cost = base_energy_cost * terrain_modifier['energy_cost']
             self.energy -= total_energy_cost
         
-        self.fitness += 1 # Fitness tetap bertambah selama hidup
-    # ^^^^ INI PERUBAHAN UTAMANYA ^^^^
+        self.fitness += 1
         
     def _draw_body(self, screen: pygame.Surface):
-        pygame.draw.circle(screen, (10, 10, 10), (int(self.x), int(self.y)), RADIUS_SEL + 1)
+        # vvvv [PERUBAHAN] vvvv
+        # Menggunakan atribut self.outline_color untuk menggambar outline
+        pygame.draw.circle(screen, self.outline_color, (int(self.x), int(self.y)), RADIUS_SEL + 1)
+        # ^^^^ [PERUBAHAN] ^^^^
+        
         speed_ratio = self.current_speed / KECEPATAN_MAKS_SEL if KECEPATAN_MAKS_SEL > 0 else 0
         r = int(WARNA_SEL[0] + (255 - WARNA_SEL[0]) * speed_ratio)
         g = int(WARNA_SEL[1] + (220 - WARNA_SEL[1]) * speed_ratio)
