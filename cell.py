@@ -10,7 +10,7 @@ from grass import Grass
 
 class Cell:
     def __init__(self, brain: NeuralNetwork = None):
-        # ... (kode __init__ lainnya tetap sama) ...
+        # ... (kode __init__ tetap sama) ...
         self.x: float = random.randint(0, LEBAR_LAYAR)
         self.y: float = random.randint(0, TINGGI_LAYAR)
         self.energy: float = ENERGI_AWAL
@@ -37,8 +37,8 @@ class Cell:
             self.base_color = (255, 105, 180)
             self.outline_color = (100, 20, 60)
             
-    def update(self, grass_patches: list, biome: str) -> str:
-        # ... (kode update lainnya tetap sama) ...
+    # --- PERUBAHAN: Tambahkan `all_cells` sebagai parameter ---
+    def update(self, grass_patches: list, all_cells: list, biome: str) -> str:
         self.target_grass = self._find_nearest_grass(grass_patches)
         
         inputs = self._get_brain_inputs(self.target_grass)
@@ -48,25 +48,41 @@ class Cell:
         self._process_brain_outputs(outputs, biome)
         
         self._move()
+        # --- PERUBAHAN: Tambahkan pengecekan untuk fitness sosial ---
+        self._update_social_fitness(all_cells)
         self._update_status(biome)
         self._update_legs()
         return "hidup" if self.is_alive() else "mati"
     
     def draw(self, screen: pygame.Surface, show_debug: bool = False):
+        # ... (kode draw tetap sama) ...
         self._draw_legs(screen)
         self._draw_body(screen)
         self._draw_direction_indicator(screen)
-        
-        # --- PERUBAHAN: Pindahkan penggambaran bar ke sini agar tidak tumpang tindih ---
         self._draw_energy_bar(screen)
         
         if show_debug:
             self._draw_state_text(screen)
             self._draw_foraging_line(screen)
-            # --- PERUBAHAN: Tambahkan penggambaran bar fitness ---
             self._draw_fitness_bar(screen)
 
-    # ... (sisa metode _draw_foraging_line, _update_state_from_brain, dll tetap sama) ...
+    # --- PERUBAHAN: Tambahkan metode baru untuk fitness sosial ---
+    def _update_social_fitness(self, all_cells: list):
+        """Menambah fitness jika sel berkumpul dengan sel lain."""
+        nearby_friends = 0
+        for other_cell in all_cells:
+            if other_cell is self:
+                continue # Jangan hitung diri sendiri
+            
+            distance = math.hypot(self.x - other_cell.x, self.y - other_cell.y)
+            if distance < JARAK_DETEKSI_SOSIAL:
+                nearby_friends += 1
+        
+        # Jika ada lebih dari 5 sel lain di sekitar (total grup 6+), dapatkan bonus
+        if nearby_friends >= 5:
+            self.fitness += BONUS_FITNESS_SOSIAL
+
+    # ... (sisa metode lainnya seperti _draw_foraging_line, _update_state_from_brain, dll tetap sama) ...
     def _draw_foraging_line(self, screen: pygame.Surface):
         if self.state == 'foraging' and self.target_grass:
             distance = math.hypot(self.target_grass.x - self.x, self.target_grass.y - self.y)
@@ -173,7 +189,7 @@ class Cell:
         self.fitness += 1
         
     def _draw_body(self, screen: pygame.Surface):
-        # ... (kode _draw_body lainnya tetap sama) ...
+        # ... (kode _draw_body tetap sama) ...
         speed_ratio = self.current_speed / KECEPATAN_MAKS_SEL if KECEPATAN_MAKS_SEL > 0 else 0
         r = int(self.base_color[0] + (255 - self.base_color[0]) * speed_ratio)
         g = int(self.base_color[1] + (220 - self.base_color[1]) * speed_ratio)
@@ -189,19 +205,19 @@ class Cell:
             pygame.draw.circle(screen, current_color, (int(self.x), int(self.y)), RADIUS_SEL)
 
     def _draw_direction_indicator(self, screen: pygame.Surface):
-        # ... (kode _draw_direction_indicator lainnya tetap sama) ...
+        # ... (kode _draw_direction_indicator tetap sama) ...
         end_x = self.x + (RADIUS_SEL + 2) * math.cos(self.angle)
         end_y = self.y + (RADIUS_SEL + 2) * math.sin(self.angle)
         pygame.draw.line(screen, (255, 50, 50), (self.x, self.y), (end_x, end_y), 2)
 
     def _draw_energy_bar(self, screen: pygame.Surface):
-        # ... (kode _draw_energy_bar lainnya tetap sama) ...
+        # ... (kode _draw_energy_bar tetap sama) ...
         if not self.is_alive(): return
         energy_ratio = self.energy / ENERGI_AWAL
         bar_width = RADIUS_SEL * 2
         bar_height = 4
         bar_x = self.x - RADIUS_SEL
-        bar_y = self.y + RADIUS_SEL + 4 # Sedikit ke bawah agar tidak tumpang tindih
+        bar_y = self.y + RADIUS_SEL + 4
         pygame.draw.rect(screen, (50, 50, 50), (bar_x, bar_y, bar_width, bar_height), border_radius=1)
         r = int(255 * (1 - energy_ratio))
         g = int(255 * energy_ratio)
@@ -210,33 +226,26 @@ class Cell:
         if fill_width > 0:
             pygame.draw.rect(screen, energy_color, (bar_x, bar_y, fill_width, bar_height), border_radius=1)
 
-    # --- PERUBAHAN: Tambahkan metode baru untuk menggambar bar fitness ---
     def _draw_fitness_bar(self, screen: pygame.Surface):
-        """Menggambar bar yang merepresentasikan skor fitness."""
+        # ... (kode _draw_fitness_bar tetap sama) ...
         if not self.is_alive(): return
-        
-        # Normalisasi fitness agar visualnya bagus. 
-        # Di sini kita gunakan modulo 1000 agar bar "reset" setelah mencapai 1000.
-        # Anda bisa sesuaikan nilai 1000 ini.
         normalized_fitness = (self.fitness % 1000) / 1000.0
         
         bar_width = RADIUS_SEL * 2
         bar_height = 4
         bar_x = self.x - RADIUS_SEL
-        bar_y = self.y + RADIUS_SEL + 10 # Posisikan di bawah bar energi
+        bar_y = self.y + RADIUS_SEL + 10
         
-        # Latar belakang bar
         pygame.draw.rect(screen, (50, 50, 50), (bar_x, bar_y, bar_width, bar_height), border_radius=1)
         
-        # Warna bar (biru ke ungu)
-        fitness_color = (138, 43, 226) # BlueViolet
+        fitness_color = (138, 43, 226)
         
         fill_width = bar_width * normalized_fitness
         if fill_width > 0:
             pygame.draw.rect(screen, fitness_color, (bar_x, bar_y, fill_width, bar_height), border_radius=1)
 
     def _draw_state_text(self, screen: pygame.Surface):
-        # ... (kode _draw_state_text lainnya tetap sama) ...
+        # ... (kode _draw_state_text tetap sama) ...
         if not hasattr(self, 'font'):
             self.font = pygame.font.Font(None, 20) 
         

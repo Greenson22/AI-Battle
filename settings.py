@@ -31,6 +31,12 @@ RADIUS_RUMPUT = 5  # <-- Diubah dari RADIUS_KRISTAL
 KECEPATAN_MAKS_SEL = 2
 JARAK_DETEKSI_MAKANAN = 100 # Jarak dalam piksel di mana sel akan mulai 'foraging'
 
+# --- Pengaturan Fitness & Perilaku ---
+JARAK_DETEKSI_SOSIAL = 75  # <-- TAMBAHKAN: Jarak untuk dianggap berkumpul
+BONUS_FITNESS_MAKAN = 50
+BONUS_FITNESS_SOSIAL = 5 # <-- TAMBAHKAN: Bonus fitness per 'tick' saat berkumpul
+
+
 # --- PENGATURAN JARINGAN SARAF (ANN) ---
 # Input: [jarak_rumput, sudut_rumput, energi_sendiri] # <-- Komentar diperbarui
 NUM_INPUTS = 3

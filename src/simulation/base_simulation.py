@@ -58,7 +58,7 @@ class BaseSimulation:
         # ... (kode _update_simulation lainnya tetap sama) ...
         for cell in self.cells[:]:
             biome_at_cell = self.terrain.get_biome_at(cell.x, cell.y)
-            if cell.update(self.grass_patches, biome_at_cell) == "mati":
+            if cell.update(self.grass_patches, self.cells, biome_at_cell) == "mati":
                 self.cells.remove(cell)
             else:
                 self._check_grass_collision(cell)
