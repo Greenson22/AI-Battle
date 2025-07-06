@@ -4,7 +4,7 @@ import pygame
 import sys
 import math
 from settings import *
-from grass import Grass # <-- Import Grass, bukan Crystal
+from grass import Grass
 
 class BaseSimulation:
     def __init__(self, title="Simulasi"):
@@ -15,13 +15,21 @@ class BaseSimulation:
         self.running = True
         self.terrain = None
         self.cells = []
-        # Ganti self.crystals menjadi self.grass_patches
-        self.grass_patches = [Grass() for _ in range(JUMLAH_RUMPUT)]
+        # Kosongkan grass_patches di sini, akan diisi nanti
+        self.grass_patches = []
 
     def run(self):
         if self.terrain is None:
             print("Error: Terrain belum diatur untuk simulasi ini!")
             return
+            
+        # Pindahkan inisialisasi rumput ke sini agar 'terrain' sudah ada
+        if not self.grass_patches:
+             while len(self.grass_patches) < JUMLAH_RUMPUT:
+                new_grass = Grass(self.terrain)
+                if new_grass.alive:
+                    self.grass_patches.append(new_grass)
+
         while self.running:
             self._handle_events()
             self._update_simulation()
@@ -45,21 +53,23 @@ class BaseSimulation:
     def _update_simulation(self):
         for cell in self.cells[:]:
             biome_at_cell = self.terrain.get_biome_at(cell.x, cell.y)
-            # Berikan list rumput ke fungsi update
             if cell.update(self.grass_patches, biome_at_cell) == "mati":
                 self.cells.remove(cell)
             else:
-                self._check_grass_collision(cell) # Panggil fungsi tabrakan rumput
+                self._check_grass_collision(cell)
 
     def _check_grass_collision(self, cell):
-        """Memeriksa dan menangani tabrakan antara sel dan rumput."""
+        """Memeriksa tabrakan sel dan rumput, lalu menumbuhkan rumput baru di tempat valid."""
         for grass in self.grass_patches[:]:
-            # Deteksi tabrakan berdasarkan jarak (lebih akurat untuk lingkaran)
-            if math.hypot(cell.x - grass.x, cell.y - grass.y) < RADIUS_SEL + RADIUS_RUMPUT:
+            if math.hypot(cell.x - grass.x, cell.y - grass.y) < RADIUS_SEL + grass.radius:
                 cell.energy = min(ENERGI_AWAL * 2, cell.energy + ENERGI_DARI_RUMPUT)
                 self.grass_patches.remove(grass)
-                # Tambahkan rumput baru di lokasi acak
-                self.grass_patches.append(Grass())
+                
+                # Loop untuk memastikan rumput baru tumbuh di daratan yang valid
+                new_grass = None
+                while new_grass is None or not new_grass.alive:
+                    new_grass = Grass(self.terrain)
+                self.grass_patches.append(new_grass)
                 break
 
     def _draw_elements(self):
@@ -75,7 +85,6 @@ class BaseSimulation:
             if len(sorted_cells) > 1 and hasattr(sorted_cells[1], 'outline_color'):
                 sorted_cells[1].outline_color = (192, 192, 192)
         
-        # Gambar semua rumput dan sel
         for entity in self.grass_patches + self.cells:
             entity.draw(self.screen)
             
