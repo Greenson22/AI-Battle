@@ -36,4 +36,4 @@ NUM_HIDDEN = 10
 NUM_OUTPUTS = 3 # Output: [belok_kiri, belok_kanan, kecepatan]
 
 # --- PENGATURAN SIMPAN & MUAT ---
-BRAIN_FILE = 'fittest_brains.npz' # Nama file untuk menyimpan otak terbaik
+BRAIN_FILE = '/data/fittest_brains.npz' # Nama file untuk menyimpan otak terbaik
