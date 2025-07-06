@@ -45,32 +45,39 @@ class NeuralNetwork:
     def save_brains(filepath, brains):
         """Menyimpan daftar beberapa otak (bobotnya) ke satu file."""
         if not brains:
-            print("Tidak ada otak untuk disimpan.")
+            print("Peringatan: Tidak ada otak untuk disimpan.")
             return
-        # Membuat dictionary untuk menyimpan semua bobot dari semua otak
+        
         all_weights = {}
         for i, brain in enumerate(brains):
             all_weights[f'w_ih_{i}'] = brain.weights_ih
             all_weights[f'w_ho_{i}'] = brain.weights_ho
-        np.savez(filepath, **all_weights)
-        print(f"{len(brains)} otak berhasil disimpan ke {filepath}")
+        
+        try:
+            np.savez(filepath, **all_weights)
+            print(f"✅ {len(brains)} otak berhasil disimpan ke {filepath}")
+        except Exception as e:
+            print(f"❌ Gagal menyimpan otak: {e}")
 
     @staticmethod
     def load_brains(filepath):
         """Memuat beberapa otak dari file dan mengembalikannya sebagai list."""
         if not os.path.exists(filepath):
-            print(f"File otak tidak ditemukan di {filepath}")
+            print(f"Info: File otak '{filepath}' tidak ditemukan. Mode Sandbox akan dimulai dengan sel acak.")
             return []
             
-        data = np.load(filepath)
-        loaded_brains = []
-        i = 0
-        # Terus memuat selama ada bobot dengan indeks i
-        while f'w_ih_{i}' in data:
-            brain = NeuralNetwork(NUM_INPUTS, NUM_HIDDEN, NUM_OUTPUTS)
-            brain.weights_ih = data[f'w_ih_{i}']
-            brain.weights_ho = data[f'w_ho_{i}']
-            loaded_brains.append(brain)
-            i += 1
-        print(f"{len(loaded_brains)} otak berhasil dimuat dari {filepath}")
-        return loaded_brains
+        try:
+            data = np.load(filepath)
+            loaded_brains = []
+            i = 0
+            while f'w_ih_{i}' in data:
+                brain = NeuralNetwork(NUM_INPUTS, NUM_HIDDEN, NUM_OUTPUTS)
+                brain.weights_ih = data[f'w_ih_{i}']
+                brain.weights_ho = data[f'w_ho_{i}']
+                loaded_brains.append(brain)
+                i += 1
+            print(f"✅ {len(loaded_brains)} otak berhasil dimuat dari {filepath}")
+            return loaded_brains
+        except Exception as e:
+            print(f"❌ Gagal memuat otak dari file: {e}")
+            return []
