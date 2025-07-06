@@ -58,6 +58,9 @@ def main():
             generation_count += 1
             generation_timer = 0
             
+            # ✨ Perubahan di sini: Sebarkan ulang semua kristal ✨
+            crystals = [Crystal() for _ in range(JUMLAH_KRISTAL)]
+            
             # Seleksi: Pilih sel terbaik berdasarkan fitness (umur) dan sisa energi
             cells.sort(key=lambda c: c.fitness, reverse=True)
             num_to_select = int(len(cells) * SELECTION_PERCENT)
@@ -84,7 +87,8 @@ def main():
                 if math.hypot(cell.x - crystal.x, cell.y - crystal.y) < RADIUS_SEL + RADIUS_KRISTAL:
                     cell.energy = min(ENERGI_AWAL * 2, cell.energy + ENERGI_DARI_KRISTAL)
                     crystals.remove(crystal)
-                    # crystals.append(Crystal())
+                    # Saat kristal dimakan, kristal baru langsung muncul di tempat acak
+                    crystals.append(Crystal())
                     break
 
         # --- Menggambar ---
