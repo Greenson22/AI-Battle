@@ -13,11 +13,12 @@ class Cell:
         self.energy = ENERGI_AWAL
         self.angle = random.uniform(0, 2 * math.pi)
         self.fitness = 0
+        # Tambahkan variabel untuk kecepatan saat ini agar bisa diakses di draw()
+        self.current_speed = 0
 
         if brain:
             self.brain = brain
         else:
-            # Pastikan NeuralNetwork diinisialisasi dengan NUM_OUTPUTS yang baru
             self.brain = NeuralNetwork(NUM_INPUTS, NUM_HIDDEN, NUM_OUTPUTS)
 
     def find_nearest_crystal(self, crystals):
@@ -46,38 +47,59 @@ class Cell:
 
         # 2. Dapatkan keputusan dari 'otak'
         outputs = self.brain.predict(np.array(inputs))
-        # Ambil 3 output: belok kiri, belok kanan, dan kontrol kecepatan
         turn_left, turn_right, speed_control = outputs[0], outputs[1], outputs[2]
         
         # 3. Lakukan aksi berdasarkan output
-        turn_strength = (turn_right - turn_left) * 0.1 # Sesuaikan kekuatan belok
+        turn_strength = (turn_right - turn_left) * 0.1
         self.angle += turn_strength
         
-        # BARU: Otak mengontrol kecepatan
-        # Output speed_control dari -1 (berhenti) hingga 1 (kecepatan penuh)
-        # Kita ubah rentang [-1, 1] menjadi [0, KECEPATAN_MAKS_SEL]
-        current_speed = (speed_control + 1) / 2 * KECEPATAN_MAKS_SEL
+        # Otak mengontrol kecepatan
+        self.current_speed = (speed_control + 1) / 2 * KECEPATAN_MAKS_SEL
         
-        # Gerakkan sel dengan kecepatan yang dikontrol otak
-        self.x += current_speed * math.cos(self.angle)
-        self.y += current_speed * math.sin(self.angle)
+        self.x += self.current_speed * math.cos(self.angle)
+        self.y += self.current_speed * math.sin(self.angle)
         
         # Batasi pergerakan di dalam layar
         self.x = max(0, min(LEBAR_LAYAR, self.x))
         self.y = max(0, min(TINGGI_LAYAR, self.y))
 
-        # BARU: Kurangi energi berdasarkan kecepatan
-        # Semakin cepat bergerak, semakin banyak energi yang terkuras
-        energy_cost = ENERGI_DIAM + (current_speed / KECEPATAN_MAKS_SEL) * ENERGI_BERGERAK
+        # Kurangi energi berdasarkan kecepatan
+        energy_cost = ENERGI_DIAM + (self.current_speed / KECEPATAN_MAKS_SEL) * ENERGI_BERGERAK
         self.energy -= energy_cost
         self.fitness += 1
         
         return "hidup" if self.energy > 0 else "mati"
 
     def draw(self, screen):
-        """Menggambar sel dan arahnya."""
-        pygame.draw.circle(screen, WARNA_SEL, (int(self.x), int(self.y)), RADIUS_SEL)
+        """Menggambar sel, arah, dan indikator statusnya."""
+        # --- BARU: Indikator Kecepatan (perubahan warna sel) ---
+        speed_ratio = self.current_speed / KECEPATAN_MAKS_SEL
+        # Campurkan WARNA_SEL dengan putih berdasarkan kecepatan
+        # Semakin cepat, semakin mendekati putih
+        r = int(WARNA_SEL[0] + (255 - WARNA_SEL[0]) * speed_ratio)
+        g = int(WARNA_SEL[1] + (255 - WARNA_SEL[1]) * speed_ratio)
+        b = int(WARNA_SEL[2] + (255 - WARNA_SEL[2]) * speed_ratio)
+        current_color = (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
+        
+        pygame.draw.circle(screen, current_color, (int(self.x), int(self.y)), RADIUS_SEL)
+
         # Gambar garis yang menunjukkan arah
         end_x = self.x + RADIUS_SEL * math.cos(self.angle)
         end_y = self.y + RADIUS_SEL * math.sin(self.angle)
         pygame.draw.line(screen, (255, 0, 0), (self.x, self.y), (end_x, end_y), 2)
+        
+        # --- BARU: Indikator Energi (bilah di atas sel) ---
+        if self.energy > 0:
+            energy_ratio = self.energy / ENERGI_AWAL
+            bar_width = RADIUS_SEL * 2
+            bar_height = 4
+            bar_x = self.x - RADIUS_SEL
+            bar_y = self.y - RADIUS_SEL - 8 # Posisi di atas sel
+            
+            # Warna bilah dari hijau ke merah
+            energy_color = (max(0, min(255, int(255 * (1 - energy_ratio)))), max(0, min(255, int(255 * energy_ratio))), 0)
+            
+            # Gambar latar belakang bilah
+            pygame.draw.rect(screen, (50, 50, 50), (bar_x, bar_y, bar_width, bar_height))
+            # Gambar bilah energi
+            pygame.draw.rect(screen, energy_color, (bar_x, bar_y, bar_width * energy_ratio, bar_height))
