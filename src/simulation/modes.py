@@ -4,7 +4,6 @@ import random
 import pygame # <-- Pastikan pygame diimpor
 from settings import *
 from cell import Cell, NeuralNetwork
-from crystal import Crystal
 from src.simulation.base_simulation import BaseSimulation
 
 class TrainingMode(BaseSimulation):
@@ -72,7 +71,6 @@ class TrainingMode(BaseSimulation):
     def _evolve_next_generation(self):
         self.generation_count += 1
         self.generation_timer = 0
-        self.crystals = [Crystal() for _ in range(JUMLAH_KRISTAL)]
         self.cells.sort(key=lambda c: c.fitness, reverse=True)
         num_to_select = int(len(self.cells) * SELECTION_PERCENT)
         fittest_cells = self.cells[:num_to_select]

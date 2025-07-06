@@ -7,37 +7,37 @@ FRAME_RATE = 60
 # Warna (R, G, B)
 WARNA_LATAR = (10, 20, 40)
 WARNA_SEL = (50, 255, 100)
-WARNA_KRISTAL = (255, 200, 50)
+WARNA_RUMPUT = (34, 139, 34)  # <-- Diubah dari WARNA_KRISTAL
 WARNA_TEKS = (255, 255, 255)
 
 # --- PENGATURAN SIMULASI & EVOLUSI ---
 JUMLAH_SEL_AWAL = 50
-JUMLAH_KRISTAL = 30
-GENERATION_TIME_SECS = 15 # Detik per generasi
+JUMLAH_RUMPUT = 40  # <-- Diubah dari JUMLAH_KRISTAL
+GENERATION_TIME_SECS = 15  # Detik per generasi
 SELECTION_PERCENT = 0.25  # Persentase sel terbaik yang bertahan
-MUTATION_RATE = 0.1       # 10% kemungkinan mutasi pada setiap bobot
-MUTATION_STRENGTH = 0.1   # Seberapa kuat mutasinya
-TURN_STRENGTH = 0.1       # Seberapa kuat sel berbelok
+MUTATION_RATE = 0.1  # 10% kemungkinan mutasi pada setiap bobot
+MUTATION_STRENGTH = 0.1  # Seberapa kuat mutasinya
+TURN_STRENGTH = 0.1  # Seberapa kuat sel berbelok
 
 # --- PENGATURAN SEL & ENERGI ---
 ENERGI_AWAL = 200
-ENERGI_DIAM = 0.2 # Energi yang dikonsumsi meskipun diam
-ENERGI_BERGERAK = 0.6 # Energi tambahan saat bergerak dengan kecepatan penuh
-ENERGI_DARI_KRISTAL = 100
-ENERGI_TENGGELAM = 25  # <-- TAMBAHKAN BARIS INI (Kerusakan per frame di air)
-ENERGI_UNTUK_REPRODUKSI = 250 # Energi minimal untuk sel bertahan ke gen berikutnya
+ENERGI_DIAM = 0.2  # Energi yang dikonsumsi meskipun diam
+ENERGI_BERGERAK = 0.6  # Energi tambahan saat bergerak dengan kecepatan penuh
+ENERGI_DARI_RUMPUT = 80  # <-- Diubah dari ENERGI_DARI_KRISTAL
+ENERGI_TENGGELAM = 25
+ENERGI_UNTUK_REPRODUKSI = 250  # Energi minimal untuk sel bertahan ke gen berikutnya
 RADIUS_SEL = 7
-RADIUS_KRISTAL = 5
-KECEPATAN_MAKS_SEL = 2 
+RADIUS_RUMPUT = 5  # <-- Diubah dari RADIUS_KRISTAL
+KECEPATAN_MAKS_SEL = 2
 
 # --- PENGATURAN JARINGAN SARAF (ANN) ---
-# Input: [jarak_kristal, sudut_kristal, energi_sendiri]
+# Input: [jarak_rumput, sudut_rumput, energi_sendiri] # <-- Komentar diperbarui
 NUM_INPUTS = 3
 NUM_HIDDEN = 10
-NUM_OUTPUTS = 3 # Output: [belok_kiri, belok_kanan, kecepatan]
+NUM_OUTPUTS = 3  # Output: [belok_kiri, belok_kanan, kecepatan]
 
 # --- PENGATURAN TERRAIN ---
-TERRAIN_SCALE = 1000.0  # Nilai asli: 100.0. Coba naikkan ke 250-400 untuk fitur yang lebih besar.
+TERRAIN_SCALE = 1000.0
 WARNA_TERRAIN = {
     'air': (40, 120, 180),
     'pasir': (240, 230, 140),
@@ -62,5 +62,5 @@ PENGARUH_TERRAIN = {
 
 # --- PENGATURAN SIMPAN & MUAT ---
 BRAIN_FILE = 'data/fittest_brains.npz'
-WORLD_FILE = 'data/world.npy' # Tambahkan ini
-WORLD_IMAGE_FILE = 'data/world.png' # File untuk menyimpan gambar terrain
+WORLD_FILE = 'data/world.npy'
+WORLD_IMAGE_FILE = 'data/world.png'

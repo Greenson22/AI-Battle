@@ -4,7 +4,7 @@ import pygame
 import sys
 import math
 from settings import *
-from crystal import Crystal
+from grass import Grass # <-- Import Grass, bukan Crystal
 
 class BaseSimulation:
     def __init__(self, title="Simulasi"):
@@ -15,7 +15,8 @@ class BaseSimulation:
         self.running = True
         self.terrain = None
         self.cells = []
-        self.crystals = [Crystal() for _ in range(JUMLAH_KRISTAL)]
+        # Ganti self.crystals menjadi self.grass_patches
+        self.grass_patches = [Grass() for _ in range(JUMLAH_RUMPUT)]
 
     def run(self):
         if self.terrain is None:
@@ -44,50 +45,42 @@ class BaseSimulation:
     def _update_simulation(self):
         for cell in self.cells[:]:
             biome_at_cell = self.terrain.get_biome_at(cell.x, cell.y)
-            # Logika kematian karena tenggelam/kehabisan energi ada di dalam cell.update
-            if cell.update(self.crystals, biome_at_cell) == "mati":
+            # Berikan list rumput ke fungsi update
+            if cell.update(self.grass_patches, biome_at_cell) == "mati":
                 self.cells.remove(cell)
             else:
-                self._check_crystal_collision(cell)
+                self._check_grass_collision(cell) # Panggil fungsi tabrakan rumput
 
-    def _check_crystal_collision(self, cell):
-        for crystal in self.crystals[:]:
-            if math.hypot(cell.x - crystal.x, cell.y - crystal.y) < RADIUS_SEL + RADIUS_KRISTAL:
-                cell.energy = min(ENERGI_AWAL * 2, cell.energy + ENERGI_DARI_KRISTAL)
-                self.crystals.remove(crystal)
-                self.crystals.append(Crystal())
+    def _check_grass_collision(self, cell):
+        """Memeriksa dan menangani tabrakan antara sel dan rumput."""
+        for grass in self.grass_patches[:]:
+            # Deteksi tabrakan berdasarkan jarak (lebih akurat untuk lingkaran)
+            if math.hypot(cell.x - grass.x, cell.y - grass.y) < RADIUS_SEL + RADIUS_RUMPUT:
+                cell.energy = min(ENERGI_AWAL * 2, cell.energy + ENERGI_DARI_RUMPUT)
+                self.grass_patches.remove(grass)
+                # Tambahkan rumput baru di lokasi acak
+                self.grass_patches.append(Grass())
                 break
 
-    # vvvv [PERUBAHAN UTAMA DI SINI] vvvv
     def _draw_elements(self):
         self.terrain.draw(self.screen)
 
-        # Logika untuk outline Emas & Perak
         if self.cells:
-            # Urutkan sel berdasarkan fitness, dari tertinggi ke terendah
             sorted_cells = sorted(self.cells, key=lambda c: c.fitness, reverse=True)
-            
-            # Reset semua outline ke default (hitam) terlebih dahulu
             for cell in self.cells:
-                # Pastikan sel punya atribut outline_color (seharusnya sudah dari jawaban sebelumnya)
                 if hasattr(cell, 'outline_color'):
-                    cell.outline_color = (10, 10, 10) # Hitam
-
-            # Atur warna outline untuk sel terbaik pertama (Emas)
+                    cell.outline_color = (10, 10, 10)
             if len(sorted_cells) > 0 and hasattr(sorted_cells[0], 'outline_color'):
-                sorted_cells[0].outline_color = (255, 215, 0) # Gold
-            
-            # Atur warna outline untuk sel terbaik kedua (Perak)
+                sorted_cells[0].outline_color = (255, 215, 0)
             if len(sorted_cells) > 1 and hasattr(sorted_cells[1], 'outline_color'):
-                sorted_cells[1].outline_color = (192, 192, 192) # Silver
+                sorted_cells[1].outline_color = (192, 192, 192)
         
-        # Gambar semua entitas
-        for entity in self.crystals + self.cells:
+        # Gambar semua rumput dan sel
+        for entity in self.grass_patches + self.cells:
             entity.draw(self.screen)
             
         self._draw_info_text()
         pygame.display.flip()
-    # ^^^^ [AKHIR PERUBAHAN] ^^^^
 
     def _draw_info_text(self):
         info_sel = self.font.render(f"Jumlah Sel: {len(self.cells)}", True, WARNA_TEKS)

@@ -4,7 +4,6 @@ import pygame
 import random
 import math
 import numpy as np
-from collections import deque
 from settings import *
 from neural_network import NeuralNetwork
 
@@ -23,15 +22,11 @@ class Cell:
         self.leg_animation_cycle = random.uniform(0, 360)
         self.leg_length = RADIUS_SEL * 1.5
         self.leg_swing_arc = math.pi / 4
+        self.outline_color = (10, 10, 10)
 
-        # vvvv [PERUBAHAN] vvvv
-        # Warna outline kini menjadi atribut yang bisa diubah
-        self.outline_color = (10, 10, 10) # Default: Hitam
-        # ^^^^ [PERUBAHAN] ^^^^
-
-    def update(self, crystals: list, biome: str) -> str:
-        """Memperbarui status sel dan animasi kaki."""
-        inputs = self._get_brain_inputs(crystals)
+    def update(self, grass_patches: list, biome: str) -> str:
+        """Memperbarui status sel, kini mencari rumput."""
+        inputs = self._get_brain_inputs(grass_patches) # Diubah ke rumput
         outputs = self.brain.predict(np.array(inputs))
         self._process_brain_outputs(outputs, biome)
         self._move()
@@ -73,23 +68,27 @@ class Cell:
         end_y2 = self.y + self.leg_length * math.sin(angle2)
         pygame.draw.line(screen, leg_color, (self.x, self.y), (end_x2, end_y2), leg_width)
 
-    def _get_brain_inputs(self, crystals: list) -> list:
-        nearest_crystal = self._find_nearest_crystal(crystals)
-        if not nearest_crystal:
+    def _get_brain_inputs(self, grass_patches: list) -> list:
+        """Mengumpulkan data dari rumput terdekat."""
+        nearest_grass = self._find_nearest_grass(grass_patches) # Diubah ke rumput
+        if not nearest_grass:
             return [1.0, 0.0, self.energy / ENERGI_AWAL]
-        dist_x = nearest_crystal.x - self.x
-        dist_y = nearest_crystal.y - self.y
+        
+        dist_x = nearest_grass.x - self.x
+        dist_y = nearest_grass.y - self.y
         distance = math.hypot(dist_x, dist_y)
-        angle_to_crystal = math.atan2(dist_y, dist_x)
+        angle_to_grass = math.atan2(dist_y, dist_x) # Diubah ke rumput
+        
         norm_dist = min(distance, LEBAR_LAYAR) / LEBAR_LAYAR
-        angle_diff = (angle_to_crystal - self.angle + math.pi) % (2 * math.pi) - math.pi
+        angle_diff = (angle_to_grass - self.angle + math.pi) % (2 * math.pi) - math.pi
         norm_angle = angle_diff / math.pi
         norm_energy = self.energy / ENERGI_AWAL
         return [norm_dist, norm_angle, norm_energy]
 
-    def _find_nearest_crystal(self, crystals: list):
-        if not crystals: return None
-        return min(crystals, key=lambda c: math.hypot(c.x - self.x, c.y - self.y))
+    def _find_nearest_grass(self, grass_patches: list):
+        """Mencari rumput terdekat."""
+        if not grass_patches: return None
+        return min(grass_patches, key=lambda g: math.hypot(g.x - self.x, g.y - self.y))
 
     def _process_brain_outputs(self, outputs: np.ndarray, terrain_type: str):
         turn_left, turn_right, speed_control = outputs
@@ -109,15 +108,10 @@ class Cell:
             base_energy_cost = ENERGI_DIAM + (speed_ratio * ENERGI_BERGERAK)
             total_energy_cost = base_energy_cost * terrain_modifier['energy_cost']
             self.energy -= total_energy_cost
-        
         self.fitness += 1
         
     def _draw_body(self, screen: pygame.Surface):
-        # vvvv [PERUBAHAN] vvvv
-        # Menggunakan atribut self.outline_color untuk menggambar outline
         pygame.draw.circle(screen, self.outline_color, (int(self.x), int(self.y)), RADIUS_SEL + 1)
-        # ^^^^ [PERUBAHAN] ^^^^
-        
         speed_ratio = self.current_speed / KECEPATAN_MAKS_SEL if KECEPATAN_MAKS_SEL > 0 else 0
         r = int(WARNA_SEL[0] + (255 - WARNA_SEL[0]) * speed_ratio)
         g = int(WARNA_SEL[1] + (220 - WARNA_SEL[1]) * speed_ratio)
