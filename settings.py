@@ -35,5 +35,29 @@ NUM_INPUTS = 3
 NUM_HIDDEN = 10
 NUM_OUTPUTS = 3 # Output: [belok_kiri, belok_kanan, kecepatan]
 
+# --- PENGATURAN TERRAIN ---
+WARNA_TERRAIN = {
+    'air': (40, 120, 180),
+    'pasir': (240, 230, 140),
+    'rumput': (34, 139, 34),
+    'hutan': (0, 100, 0),
+    'batu': (139, 137, 137)
+}
+# Level ketinggian untuk setiap biome (rentang 0.0 - 1.0)
+TINGKAT_AIR = 0.3
+TINGKAT_PASIR = 0.4
+TINGKAT_RUMPUT = 0.6
+TINGKAT_HUTAN = 0.8
+
+# Pengaruh terrain terhadap kecepatan dan energi
+PENGARUH_TERRAIN = {
+    'air': {'speed_multiplier': 0.4, 'energy_cost': 1.5},
+    'pasir': {'speed_multiplier': 0.7, 'energy_cost': 1.2},
+    'rumput': {'speed_multiplier': 1.0, 'energy_cost': 1.0},
+    'hutan': {'speed_multiplier': 0.8, 'energy_cost': 1.1},
+    'batu': {'speed_multiplier': 0.6, 'energy_cost': 1.3},
+}
+
 # --- PENGATURAN SIMPAN & MUAT ---
-BRAIN_FILE = 'data/fittest_brains.npz' # Nama file untuk menyimpan otak terbaik
+BRAIN_FILE = 'data/fittest_brains.npz'
+WORLD_FILE = 'data/world.npy' # Tambahkan ini

@@ -4,9 +4,11 @@ import pygame
 import math
 import random
 import sys
+import numpy as np
 from settings import *
 from cell import Cell, NeuralNetwork
 from crystal import Crystal
+from terrain import Terrain # <- DI TAMBAHKAN
 
 # --- KELAS UNTUK ELEMEN UI ---
 class Button:
@@ -48,11 +50,14 @@ class BaseMenu:
             
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    return "quit"
+                    self.running = False
+                    return "quit_app"
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                    return "back" # Opsi untuk kembali
+                    self.running = False
+                    return "back"
                 for mode, button in self.buttons.items():
                     if button.is_clicked(event):
+                        self.running = False
                         return mode
 
             for button in self.buttons.values():
@@ -70,19 +75,21 @@ class BaseMenu:
         for button in self.buttons.values():
             button.draw(self.screen, self.font_button)
 
+# vvv DIUBAH vvv
 class MainMenu(BaseMenu):
     """Menu utama aplikasi."""
     def __init__(self, screen):
         super().__init__(screen, "Simulasi Evolusi Sel")
-        btn_width, btn_height = 300, 60
+        btn_width, btn_height = 350, 60
         btn_x = (LEBAR_LAYAR - btn_width) / 2
         self.buttons = {
             "train": Button(btn_x, 200, btn_width, btn_height, "Mulai Latihan", (0, 100, 200), (0, 150, 255)),
             "sandbox": Button(btn_x, 280, btn_width, btn_height, "Buka Sandbox", (0, 150, 100), (0, 200, 150)),
-            "quit": Button(btn_x, 360, btn_width, btn_height, "Keluar", (200, 50, 50), (255, 100, 100))
+            "world_menu": Button(btn_x, 360, btn_width, btn_height, "Pengaturan Dunia", (100, 100, 100), (150, 150, 150)),
+            "quit": Button(btn_x, 440, btn_width, btn_height, "Keluar", (200, 50, 50), (255, 100, 100))
         }
-        
-# ✨ KELAS MENU BARU UNTUK OPSI LATIHAN ✨
+# ^^^ DIUBAH ^^^
+
 class TrainingStartMenu(BaseMenu):
     """Sub-menu untuk memilih mode latihan."""
     def __init__(self, screen):
@@ -94,41 +101,70 @@ class TrainingStartMenu(BaseMenu):
             "continue_training": Button(btn_x, 280, btn_width, btn_height, "Lanjutkan dari File", (20, 180, 140), (30, 200, 160)),
         }
 
+# vvv MENU BARU vvv
+class WorldMenu(BaseMenu):
+    """Menu untuk mengelola dunia/terrain."""
+    def __init__(self, screen):
+        super().__init__(screen, "Pengaturan Dunia")
+        btn_width, btn_height = 450, 60
+        btn_x = (LEBAR_LAYAR - btn_width) / 2
+        self.buttons = {
+            "generate_world": Button(btn_x, 200, btn_width, btn_height, "Buat & Simpan Dunia Baru", (20, 140, 180), (30, 160, 200)),
+            "back": Button(btn_x, 280, btn_width, btn_height, "Kembali", (100, 100, 100), (150, 150, 150)),
+        }
+# ^^^ MENU BARU ^^^
+
 
 # --- KELAS UNTUK SIMULASI ---
+# vvv DIUBAH vvv
 class BaseSimulation:
-    # ... (Kode kelas ini tidak berubah, dilewati untuk keringkasan)
     def __init__(self, title="Simulasi"):
         self.screen = pygame.display.set_mode((LEBAR_LAYAR, TINGGI_LAYAR))
         pygame.display.set_caption(title)
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 30)
         self.running = True
+        
+        # Terrain akan diatur dari luar sebelum `run` dipanggil
+        self.terrain = None
+        
         self.cells = []
         self.crystals = [Crystal() for _ in range(JUMLAH_KRISTAL)]
+
     def run(self):
+        # Memastikan terrain sudah diatur
+        if self.terrain is None:
+            print("❌ Error: Terrain belum diatur untuk simulasi ini!")
+            return
+
         while self.running:
             self._handle_events()
             self._update_simulation()
             self._draw_elements()
             self.clock.tick(FRAME_RATE)
+
     def _handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                self.running = False
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
                 self._handle_key_press(event)
+
     def _handle_key_press(self, event):
         pass
+
     def _update_simulation(self):
+        # Kirim objek terrain ke metode update sel
         for cell in self.cells[:]:
-            if cell.update(self.crystals) == "mati":
+            if cell.update(self.crystals, self.terrain) == "mati":
                 self.cells.remove(cell)
             else:
                 self._check_crystal_collision(cell)
+
     def _check_crystal_collision(self, cell):
         for crystal in self.crystals[:]:
             if math.hypot(cell.x - crystal.x, cell.y - crystal.y) < RADIUS_SEL + RADIUS_KRISTAL:
@@ -136,21 +172,25 @@ class BaseSimulation:
                 self.crystals.remove(crystal)
                 self.crystals.append(Crystal())
                 break
+
     def _draw_elements(self):
-        self.screen.fill(WARNA_LATAR)
+        # Gambar terrain terlebih dahulu
+        self.terrain.draw(self.screen)
+        
         for entity in self.crystals + self.cells:
             entity.draw(self.screen)
         self._draw_info_text()
         pygame.display.flip()
+        
     def _draw_info_text(self):
         info_sel = self.font.render(f"Jumlah Sel: {len(self.cells)}", True, WARNA_TEKS)
         self.screen.blit(info_sel, (10, 40))
         info_help = self.font.render("Tekan ESC untuk kembali ke menu", True, WARNA_TEKS)
         self.screen.blit(info_help, (10, TINGGI_LAYAR - 40))
+# ^^^ DIUBAH ^^^
 
 
 class TrainingMode(BaseSimulation):
-    # ✨ DIUBAH: Tambahkan parameter `start_from_scratch` ✨
     def __init__(self, start_from_scratch=True):
         super().__init__(title="Mode Latihan")
         self.generation_count = 1
@@ -169,13 +209,12 @@ class TrainingMode(BaseSimulation):
                 self.cells = [Cell() for _ in range(JUMLAH_SEL_AWAL)]
             else:
                 print("Berhasil memuat otak. Melanjutkan latihan...")
-                # Gunakan otak yang dimuat sebagai populasi awal
                 self.cells = self._create_new_population(trained_brains)
                 
-    # ... (Sisa metode di TrainingMode tidak berubah, dilewati) ...
     def _handle_key_press(self, event):
         if event.key == pygame.K_s:
             self._save_fittest_brains()
+            
     def _update_simulation(self):
         super()._update_simulation()
         self.generation_timer += 1
@@ -183,6 +222,7 @@ class TrainingMode(BaseSimulation):
             self.save_indicator_timer -= 1
         if self.generation_timer >= self.generation_frame_limit or not self.cells:
             self._evolve_next_generation()
+            
     def _save_fittest_brains(self):
         if not self.cells:
             print("Tidak ada sel untuk disimpan.")
@@ -192,11 +232,12 @@ class TrainingMode(BaseSimulation):
         fittest_brains = [cell.brain for cell in self.cells[:num_to_save]]
         NeuralNetwork.save_brains(BRAIN_FILE, fittest_brains)
         self.save_indicator_timer = 120
+        
     def _draw_info_text(self):
         super()._draw_info_text()
         info_gen = self.font.render(f"Generasi: {self.generation_count}", True, WARNA_TEKS)
         info_time = self.font.render(f"Waktu: {self.generation_timer // FRAME_RATE}s", True, WARNA_TEKS)
-        info_save_prompt = self.font.render("Tekan 'S' untuk menyimpan", True, WARNA_TEKS)
+        info_save_prompt = self.font.render("Tekan 'S' untuk menyimpan otak terbaik", True, WARNA_TEKS)
         self.screen.blit(info_gen, (10, 10))
         self.screen.blit(info_time, (10, 70))
         self.screen.blit(info_save_prompt, (LEBAR_LAYAR - info_save_prompt.get_width() - 10, 10))
@@ -204,6 +245,7 @@ class TrainingMode(BaseSimulation):
             save_indicator_text = self.font.render("Otak berhasil disimpan!", True, (100, 255, 100))
             text_rect = save_indicator_text.get_rect(topright=(LEBAR_LAYAR - 10, 40))
             self.screen.blit(save_indicator_text, text_rect)
+            
     def _evolve_next_generation(self):
         self.generation_count += 1
         self.generation_timer = 0
@@ -211,14 +253,14 @@ class TrainingMode(BaseSimulation):
         self.cells.sort(key=lambda c: c.fitness, reverse=True)
         num_to_select = int(len(self.cells) * SELECTION_PERCENT)
         fittest_cells = self.cells[:num_to_select]
-        reproducers = [c for c in fittest_cells if c.energy > 0]
-        if not reproducers:
+        if not fittest_cells:
             print(f"Generasi {self.generation_count-1} punah.")
             self.cells = [Cell() for _ in range(JUMLAH_SEL_AWAL)]
         else:
-            print(f"Generasi {self.generation_count-1} -> {self.generation_count}.")
-            brains_to_reproduce = [c.brain for c in reproducers]
+            print(f"Generasi {self.generation_count-1} -> {self.generation_count}. {len(fittest_cells)} sel terbaik bertahan.")
+            brains_to_reproduce = [c.brain for c in fittest_cells]
             self.cells = self._create_new_population(brains_to_reproduce)
+            
     def _create_new_population(self, parent_brains):
         new_generation = []
         while len(new_generation) < JUMLAH_SEL_AWAL:
@@ -230,7 +272,6 @@ class TrainingMode(BaseSimulation):
         return new_generation
 
 class SandboxMode(BaseSimulation):
-    # ... (Kode kelas ini tidak berubah, dilewati) ...
     def __init__(self):
         super().__init__(title="Mode Sandbox")
         trained_brains = NeuralNetwork.load_brains(BRAIN_FILE)
@@ -242,37 +283,57 @@ class SandboxMode(BaseSimulation):
                 self.cells.append(Cell(brain=brain_to_use))
 
 # --- FUNGSI UTAMA ---
+# vvv DIUBAH TOTAL vvv
 def main():
     """Fungsi utama untuk menjalankan aplikasi dan menangani navigasi menu."""
     pygame.init()
     screen = pygame.display.set_mode((LEBAR_LAYAR, TINGGI_LAYAR))
     
-    while True:
+    # Muat atau buat terrain utama saat aplikasi pertama kali jalan
+    main_terrain = Terrain.load_world(WORLD_FILE)
+    if main_terrain is None:
+        print("File dunia tidak ditemukan. Membuat dunia baru...")
+        main_terrain = Terrain(LEBAR_LAYAR, TINGGI_LAYAR, seed=np.random.randint(0, 1000))
+        main_terrain.save_world(WORLD_FILE)
+
+    app_running = True
+    while app_running:
         main_menu = MainMenu(screen)
         main_choice = main_menu.run()
 
+        game = None
         if main_choice == "train":
-            # Tampilkan sub-menu latihan
             training_menu = TrainingStartMenu(screen)
             training_choice = training_menu.run()
 
-            game = None
             if training_choice == "new_training":
                 game = TrainingMode(start_from_scratch=True)
             elif training_choice == "continue_training":
                 game = TrainingMode(start_from_scratch=False)
-            
-            if game:
-                game.run()
 
         elif main_choice == "sandbox":
             game = SandboxMode()
+
+        elif main_choice == "world_menu":
+            world_menu = WorldMenu(screen)
+            world_choice = world_menu.run()
+            if world_choice == "generate_world":
+                print("Membuat dunia baru...")
+                main_terrain = Terrain(LEBAR_LAYAR, TINGGI_LAYAR, seed=np.random.randint(0, 1000))
+                main_terrain.save_world(WORLD_FILE)
+                print("Dunia baru telah dibuat dan disimpan.")
+
+        elif main_choice == "quit" or main_choice == "quit_app":
+            app_running = False
+
+        # Jika mode game dipilih (latihan/sandbox), atur terrain dan jalankan
+        if game:
+            game.terrain = main_terrain
             game.run()
-        elif main_choice == "quit":
-            break
 
     pygame.quit()
     sys.exit()
+# ^^^ DIUBAH TOTAL ^^^
 
 if __name__ == "__main__":
     main()
