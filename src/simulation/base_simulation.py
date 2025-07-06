@@ -15,15 +15,15 @@ class BaseSimulation:
         self.running = True
         self.terrain = None
         self.cells = []
-        # Kosongkan grass_patches di sini, akan diisi nanti
         self.grass_patches = []
+        # --- PERUBAHAN: Default diubah ke False agar state tidak tampil di awal ---
+        self.show_debug_text = False
 
     def run(self):
         if self.terrain is None:
             print("Error: Terrain belum diatur untuk simulasi ini!")
             return
             
-        # Pindahkan inisialisasi rumput ke sini agar 'terrain' sudah ada
         if not self.grass_patches:
              while len(self.grass_patches) < JUMLAH_RUMPUT:
                 new_grass = Grass(self.terrain)
@@ -48,7 +48,8 @@ class BaseSimulation:
                 self._handle_key_press(event)
 
     def _handle_key_press(self, event):
-        pass
+        if event.key == pygame.K_d:
+            self.show_debug_text = not self.show_debug_text
 
     def _update_simulation(self):
         for cell in self.cells[:]:
@@ -65,7 +66,6 @@ class BaseSimulation:
                 cell.energy = min(ENERGI_AWAL * 2, cell.energy + ENERGI_DARI_RUMPUT)
                 self.grass_patches.remove(grass)
                 
-                # Loop untuk memastikan rumput baru tumbuh di daratan yang valid
                 new_grass = None
                 while new_grass is None or not new_grass.alive:
                     new_grass = Grass(self.terrain)
@@ -85,8 +85,11 @@ class BaseSimulation:
             if len(sorted_cells) > 1 and hasattr(sorted_cells[1], 'outline_color'):
                 sorted_cells[1].outline_color = (192, 192, 192)
         
-        for entity in self.grass_patches + self.cells:
-            entity.draw(self.screen)
+        for grass in self.grass_patches:
+            grass.draw(self.screen)
+        
+        for cell in self.cells:
+            cell.draw(self.screen, self.show_debug_text)
             
         self._draw_info_text()
         pygame.display.flip()
@@ -94,5 +97,11 @@ class BaseSimulation:
     def _draw_info_text(self):
         info_sel = self.font.render(f"Jumlah Sel: {len(self.cells)}", True, WARNA_TEKS)
         self.screen.blit(info_sel, (10, 40))
+
+        status_text = "ON" if self.show_debug_text else "OFF"
+        color = (100, 255, 100) if self.show_debug_text else (255, 100, 100)
+        info_debug = self.font.render(f"Mode Debug (D): {status_text}", True, color)
+        self.screen.blit(info_debug, (10, TINGGI_LAYAR - 70))
+
         info_help = self.font.render("Tekan ESC untuk kembali ke menu", True, WARNA_TEKS)
         self.screen.blit(info_help, (10, TINGGI_LAYAR - 40))

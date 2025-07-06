@@ -6,6 +6,7 @@ import math
 import numpy as np
 from settings import *
 from neural_network import NeuralNetwork
+from grass import Grass
 
 class Cell:
     def __init__(self, brain: NeuralNetwork = None):
@@ -15,8 +16,7 @@ class Cell:
         self.angle: float = random.uniform(0, 2 * math.pi)
         self.gender = random.choice(['male', 'female'])
         
-        # --- Perubahan: Tambahkan atribut state ---
-        self.state: str = 'wandering' # Keadaan awal: 'idle', 'wandering', 'foraging', 'running'
+        self.state: str = 'wandering'
         
         self.fitness: int = 0
         self.current_speed: float = 0
@@ -25,6 +25,9 @@ class Cell:
         self.leg_animation_cycle = random.uniform(0, 360)
         self.leg_length = RADIUS_SEL * 1.5
         self.leg_swing_arc = math.pi / 4
+        
+        # --- PERUBAHAN: Tambahkan atribut untuk menyimpan target rumput ---
+        self.target_grass = None
 
         if self.gender == 'male':
             self.base_color = (60, 180, 255)
@@ -33,13 +36,16 @@ class Cell:
             self.base_color = (255, 105, 180)
             self.outline_color = (100, 20, 60)
 
+    # --- PERUBAHAN: Optimalkan pencarian rumput ---
     def update(self, grass_patches: list, biome: str) -> str:
-        """Memperbarui status sel berdasarkan state."""
-        inputs = self._get_brain_inputs(grass_patches)
+        # Cari rumput terdekat sekali saja per update
+        self.target_grass = self._find_nearest_grass(grass_patches)
+        
+        # Berikan target ke metode lain
+        inputs = self._get_brain_inputs(self.target_grass)
         outputs = self.brain.predict(np.array(inputs))
         
-        # --- Perubahan: Update state sebelum bertindak ---
-        self._update_state(grass_patches, outputs)
+        self._update_state(self.target_grass, outputs)
         
         self._process_brain_outputs(outputs, biome)
         self._move()
@@ -47,27 +53,39 @@ class Cell:
         self._update_legs()
         return "hidup" if self.is_alive() else "mati"
 
-    # --- Perubahan: Metode baru untuk mengelola state ---
-    def _update_state(self, grass_patches: list, outputs: np.ndarray):
-        """Menentukan state sel saat ini."""
+    # --- PERUBAHAN: Terima argumen `show_debug` untuk menampilkan info tambahan ---
+    def draw(self, screen: pygame.Surface, show_debug: bool = False):
+        self._draw_legs(screen)
+        self._draw_body(screen)
+        self._draw_direction_indicator(screen)
+        self._draw_energy_bar(screen)
+        
+        # Jika mode debug aktif, tampilkan state dan garis target
+        if show_debug:
+            self._draw_state_text(screen)
+            self._draw_foraging_line(screen)
+
+    # --- PERUBAHAN: Tambahkan metode untuk menggambar garis ke target ---
+    def _draw_foraging_line(self, screen: pygame.Surface):
+        """Menggambar garis dari sel ke rumput target jika sedang foraging."""
+        if self.state == 'foraging' and self.target_grass:
+            distance = math.hypot(self.target_grass.x - self.x, self.target_grass.y - self.y)
+            if distance < JARAK_DETEKSI_MAKANAN:
+                line_color = (255, 255, 0) # Kuning
+                pygame.draw.line(screen, line_color, (self.x, self.y), (self.target_grass.x, self.target_grass.y), 1)
+
+    # --- PERUBAHAN: Terima `nearest_grass` sebagai argumen ---
+    def _update_state(self, nearest_grass: Grass, outputs: np.ndarray):
         _, _, speed_control = outputs
-        nearest_grass = self._find_nearest_grass(grass_patches)
         
         if self.energy < ENERGI_AWAL * 0.25:
             self.state = 'idle'
         elif nearest_grass and math.hypot(nearest_grass.x - self.x, nearest_grass.y - self.y) < JARAK_DETEKSI_MAKANAN:
             self.state = 'foraging'
-        elif speed_control > 0.75: # Jika otak memutuskan untuk bergerak cepat
+        elif speed_control > 0.75:
              self.state = 'running'
         else:
             self.state = 'wandering'
-
-    def draw(self, screen: pygame.Surface):
-        self._draw_legs(screen)
-        self._draw_body(screen)
-        self._draw_direction_indicator(screen)
-        self._draw_energy_bar(screen)
-        self._draw_state_text(screen) # Tampilkan teks state
 
     def is_alive(self) -> bool:
         return self.energy > 0
@@ -97,8 +115,8 @@ class Cell:
         end_y2 = self.y + self.leg_length * math.sin(angle2)
         pygame.draw.line(screen, leg_color, (self.x, self.y), (end_x2, end_y2), leg_width)
 
-    def _get_brain_inputs(self, grass_patches: list) -> list:
-        nearest_grass = self._find_nearest_grass(grass_patches)
+    # --- PERUBAHAN: Terima `nearest_grass` sebagai argumen ---
+    def _get_brain_inputs(self, nearest_grass: Grass) -> list:
         if not nearest_grass:
             return [1.0, 0.0, self.energy / ENERGI_AWAL]
         
@@ -118,32 +136,28 @@ class Cell:
         return min(grass_patches, key=lambda g: math.hypot(g.x - self.x, g.y - self.y))
 
     def _process_brain_outputs(self, outputs: np.ndarray, terrain_type: str):
-        # --- Perubahan: Logika disesuaikan berdasarkan state ---
         turn_left, turn_right, speed_control = outputs
         terrain_modifier = PENGARUH_TERRAIN[terrain_type]
         max_speed_on_terrain = KECEPATAN_MAKS_SEL * terrain_modifier['speed_multiplier']
 
         if self.state == 'idle':
             self.current_speed = 0
-            return # Tidak perlu memproses putaran jika diam
+            return
         
         elif self.state == 'wandering':
-            # Bergerak acak dengan kecepatan sedang
             turn_strength = (turn_right - turn_left) * TURN_STRENGTH
             self.angle += turn_strength
-            self.current_speed = max_speed_on_terrain * 0.4 # Kecepatan wander
+            self.current_speed = max_speed_on_terrain * 0.4
             
         elif self.state == 'foraging':
-            # Otak sepenuhnya mengontrol gerakan untuk mengejar makanan
             turn_strength = (turn_right - turn_left) * TURN_STRENGTH
             self.angle += turn_strength
             self.current_speed = (speed_control + 1) / 2 * max_speed_on_terrain
             
         elif self.state == 'running':
-            # Bergerak cepat, mengabaikan sedikit belokan untuk lurus
             turn_strength = (turn_right - turn_left) * TURN_STRENGTH * 0.5
             self.angle += turn_strength
-            self.current_speed = max_speed_on_terrain # Kecepatan penuh
+            self.current_speed = max_speed_on_terrain
 
     def _update_status(self, terrain_type: str):
         if terrain_type == 'air':
@@ -155,12 +169,11 @@ class Cell:
         speed_ratio = self.current_speed / KECEPATAN_MAKS_SEL if KECEPATAN_MAKS_SEL > 0 else 0
         base_energy_cost = ENERGI_DIAM + (speed_ratio * ENERGI_BERGERAK)
         
-        # --- Perubahan: Konsumsi energi berdasarkan state ---
         state_multiplier = 1.0
         if self.state == 'running':
-            state_multiplier = 2.5 # Berlari menguras energi lebih cepat
+            state_multiplier = 2.5
         elif self.state == 'idle':
-            state_multiplier = 0.5 # Diam sangat hemat energi
+            state_multiplier = 0.5
             
         total_energy_cost = base_energy_cost * terrain_modifier['energy_cost'] * state_multiplier
         self.energy -= total_energy_cost
@@ -201,20 +214,15 @@ class Cell:
         if fill_width > 0:
             pygame.draw.rect(screen, energy_color, (bar_x, bar_y, fill_width, bar_height), border_radius=1)
 
-# --- Perubahan: Metode untuk menampilkan teks state dengan inisial ---
     def _draw_state_text(self, screen: pygame.Surface):
-        """Menampilkan inisial state sel saat ini di atasnya."""
         if not hasattr(self, 'font'):
-            # Sedikit perbesar font agar inisial jelas terlihat
             self.font = pygame.font.Font(None, 20) 
         
-        # Ambil huruf pertama dari state sebagai inisial
         state_initial = self.state[0].upper()
         
         text_surface = self.font.render(state_initial, True, (255, 255, 255))
         text_rect = text_surface.get_rect(center=(self.x, self.y - RADIUS_SEL - 18))
         
-        # Tambahkan background gelap kecil agar teks lebih mudah dibaca
         bg_rect = text_rect.inflate(4, 4)
         pygame.draw.rect(screen, (0, 0, 0, 128), bg_rect, border_radius=3)
 
