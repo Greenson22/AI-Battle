@@ -17,6 +17,7 @@ GENERATION_TIME_SECS = 15 # Detik per generasi
 SELECTION_PERCENT = 0.25  # Persentase sel terbaik yang bertahan
 MUTATION_RATE = 0.1       # 10% kemungkinan mutasi pada setiap bobot
 MUTATION_STRENGTH = 0.1   # Seberapa kuat mutasinya
+TURN_STRENGTH = 0.1       # Seberapa kuat sel berbelok
 
 # --- PENGATURAN SEL & ENERGI ---
 ENERGI_AWAL = 200
