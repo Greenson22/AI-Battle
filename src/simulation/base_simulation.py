@@ -8,6 +8,7 @@ from grass import Grass
 
 class BaseSimulation:
     def __init__(self, title="Simulasi"):
+        # ... (kode __init__ lainnya tetap sama) ...
         self.screen = pygame.display.set_mode((LEBAR_LAYAR, TINGGI_LAYAR))
         pygame.display.set_caption(title)
         self.clock = pygame.time.Clock()
@@ -16,10 +17,10 @@ class BaseSimulation:
         self.terrain = None
         self.cells = []
         self.grass_patches = []
-        # --- PERUBAHAN: Default diubah ke False agar state tidak tampil di awal ---
         self.show_debug_text = False
 
     def run(self):
+        # ... (kode run lainnya tetap sama) ...
         if self.terrain is None:
             print("Error: Terrain belum diatur untuk simulasi ini!")
             return
@@ -37,6 +38,7 @@ class BaseSimulation:
             self.clock.tick(FRAME_RATE)
 
     def _handle_events(self):
+        # ... (kode _handle_events lainnya tetap sama) ...
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
@@ -48,10 +50,12 @@ class BaseSimulation:
                 self._handle_key_press(event)
 
     def _handle_key_press(self, event):
+        # ... (kode _handle_key_press lainnya tetap sama) ...
         if event.key == pygame.K_d:
             self.show_debug_text = not self.show_debug_text
 
     def _update_simulation(self):
+        # ... (kode _update_simulation lainnya tetap sama) ...
         for cell in self.cells[:]:
             biome_at_cell = self.terrain.get_biome_at(cell.x, cell.y)
             if cell.update(self.grass_patches, biome_at_cell) == "mati":
@@ -64,6 +68,10 @@ class BaseSimulation:
         for grass in self.grass_patches[:]:
             if math.hypot(cell.x - grass.x, cell.y - grass.y) < RADIUS_SEL + grass.radius:
                 cell.energy = min(ENERGI_AWAL * 2, cell.energy + ENERGI_DARI_RUMPUT)
+                
+                # --- PERUBAHAN: Tambahkan bonus fitness saat makan ---
+                cell.fitness += 50
+                
                 self.grass_patches.remove(grass)
                 
                 new_grass = None
@@ -73,13 +81,14 @@ class BaseSimulation:
                 break
 
     def _draw_elements(self):
+        # ... (kode _draw_elements lainnya tetap sama) ...
         self.terrain.draw(self.screen)
 
         if self.cells:
             sorted_cells = sorted(self.cells, key=lambda c: c.fitness, reverse=True)
-            for cell in self.cells:
-                if hasattr(cell, 'outline_color'):
-                    cell.outline_color = (10, 10, 10)
+            for c in self.cells:
+                if hasattr(c, 'outline_color'):
+                    c.outline_color = (10, 10, 10)
             if len(sorted_cells) > 0 and hasattr(sorted_cells[0], 'outline_color'):
                 sorted_cells[0].outline_color = (255, 215, 0)
             if len(sorted_cells) > 1 and hasattr(sorted_cells[1], 'outline_color'):
@@ -95,6 +104,7 @@ class BaseSimulation:
         pygame.display.flip()
 
     def _draw_info_text(self):
+        # ... (kode _draw_info_text lainnya tetap sama) ...
         info_sel = self.font.render(f"Jumlah Sel: {len(self.cells)}", True, WARNA_TEKS)
         self.screen.blit(info_sel, (10, 40))
 

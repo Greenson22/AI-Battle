@@ -10,19 +10,18 @@ from grass import Grass
 
 class Cell:
     def __init__(self, brain: NeuralNetwork = None):
+        # ... (kode __init__ lainnya tetap sama) ...
         self.x: float = random.randint(0, LEBAR_LAYAR)
         self.y: float = random.randint(0, TINGGI_LAYAR)
         self.energy: float = ENERGI_AWAL
         self.angle: float = random.uniform(0, 2 * math.pi)
         self.gender = random.choice(['male', 'female'])
         
-        # --- PERUBAHAN: Definisikan daftar state yang mungkin ---
         self.possible_states = ['idle', 'wandering', 'foraging', 'running']
         self.state: str = 'wandering'
         
         self.fitness: int = 0
         self.current_speed: float = 0
-        # Otak sekarang akan diinisialisasi dengan 7 output sesuai settings.py
         self.brain: NeuralNetwork = brain or NeuralNetwork(NUM_INPUTS, NUM_HIDDEN, NUM_OUTPUTS)
         
         self.leg_animation_cycle = random.uniform(0, 360)
@@ -37,14 +36,14 @@ class Cell:
         else:
             self.base_color = (255, 105, 180)
             self.outline_color = (100, 20, 60)
-
+            
     def update(self, grass_patches: list, biome: str) -> str:
+        # ... (kode update lainnya tetap sama) ...
         self.target_grass = self._find_nearest_grass(grass_patches)
         
         inputs = self._get_brain_inputs(self.target_grass)
         outputs = self.brain.predict(np.array(inputs))
         
-        # --- PERUBAHAN: Perbarui state dan gerakan berdasarkan output otak ---
         self._update_state_from_brain(outputs)
         self._process_brain_outputs(outputs, biome)
         
@@ -52,7 +51,8 @@ class Cell:
         self._update_status(biome)
         self._update_legs()
         return "hidup" if self.is_alive() else "mati"
-
+    
+    # ... (sisa metode draw, _draw_foraging_line, _update_state_from_brain, dll tetap sama) ...
     def draw(self, screen: pygame.Surface, show_debug: bool = False):
         self._draw_legs(screen)
         self._draw_body(screen)
@@ -70,16 +70,9 @@ class Cell:
                 line_color = (255, 255, 0)
                 pygame.draw.line(screen, line_color, (self.x, self.y), (self.target_grass.x, self.target_grass.y), 1)
 
-    # --- PERUBAHAN: Metode ini sekarang sepenuhnya digerakkan oleh ANN ---
     def _update_state_from_brain(self, outputs: np.ndarray):
-        """Memilih state berdasarkan output dari Neural Network."""
-        # Ambil 4 output terakhir yang didedikasikan untuk state
         state_outputs = outputs[3:]
-        
-        # Cari indeks dari neuron state dengan aktivasi tertinggi
         chosen_state_index = np.argmax(state_outputs)
-        
-        # Tetapkan state berdasarkan indeks tersebut
         self.state = self.possible_states[chosen_state_index]
 
     def is_alive(self) -> bool:
@@ -129,9 +122,7 @@ class Cell:
         if not grass_patches: return None
         return min(grass_patches, key=lambda g: math.hypot(g.x - self.x, g.y - self.y))
 
-    # --- PERUBAHAN: Sesuaikan cara membaca output otak ---
     def _process_brain_outputs(self, outputs: np.ndarray, terrain_type: str):
-        # 3 output pertama tetap untuk gerakan
         turn_left, turn_right, speed_control = outputs[:3]
         
         terrain_modifier = PENGARUH_TERRAIN[terrain_type]
@@ -171,12 +162,15 @@ class Cell:
             state_multiplier = 2.5
         elif self.state == 'idle':
             state_multiplier = 0.5
+            # --- PERUBAHAN: Kurangi fitness jika terlalu lama diam ---
+            self.fitness -= 2
             
         total_energy_cost = base_energy_cost * terrain_modifier['energy_cost'] * state_multiplier
         self.energy -= total_energy_cost
-        self.fitness += 1
+        self.fitness += 1 # Fitness dasar karena bertahan hidup
         
     def _draw_body(self, screen: pygame.Surface):
+        # ... (kode _draw_body lainnya tetap sama) ...
         speed_ratio = self.current_speed / KECEPATAN_MAKS_SEL if KECEPATAN_MAKS_SEL > 0 else 0
         r = int(self.base_color[0] + (255 - self.base_color[0]) * speed_ratio)
         g = int(self.base_color[1] + (220 - self.base_color[1]) * speed_ratio)
@@ -192,11 +186,13 @@ class Cell:
             pygame.draw.circle(screen, current_color, (int(self.x), int(self.y)), RADIUS_SEL)
 
     def _draw_direction_indicator(self, screen: pygame.Surface):
+        # ... (kode _draw_direction_indicator lainnya tetap sama) ...
         end_x = self.x + (RADIUS_SEL + 2) * math.cos(self.angle)
         end_y = self.y + (RADIUS_SEL + 2) * math.sin(self.angle)
         pygame.draw.line(screen, (255, 50, 50), (self.x, self.y), (end_x, end_y), 2)
 
     def _draw_energy_bar(self, screen: pygame.Surface):
+        # ... (kode _draw_energy_bar lainnya tetap sama) ...
         if not self.is_alive(): return
         energy_ratio = self.energy / ENERGI_AWAL
         bar_width = RADIUS_SEL * 2
@@ -212,6 +208,7 @@ class Cell:
             pygame.draw.rect(screen, energy_color, (bar_x, bar_y, fill_width, bar_height), border_radius=1)
 
     def _draw_state_text(self, screen: pygame.Surface):
+        # ... (kode _draw_state_text lainnya tetap sama) ...
         if not hasattr(self, 'font'):
             self.font = pygame.font.Font(None, 20) 
         
