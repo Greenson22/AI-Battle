@@ -17,6 +17,7 @@ class Cell:
         if brain:
             self.brain = brain
         else:
+            # Pastikan NeuralNetwork diinisialisasi dengan NUM_OUTPUTS yang baru
             self.brain = NeuralNetwork(NUM_INPUTS, NUM_HIDDEN, NUM_OUTPUTS)
 
     def find_nearest_crystal(self, crystals):
@@ -33,7 +34,6 @@ class Cell:
             dist_y = nearest_crystal.y - self.y
             dist = math.hypot(dist_x, dist_y)
             
-            # Normalisasi input antara -1 dan 1
             norm_dist = min(dist, LEBAR_LAYAR) / LEBAR_LAYAR
             
             angle_to_crystal = math.atan2(dist_y, dist_x)
@@ -46,21 +46,30 @@ class Cell:
 
         # 2. Dapatkan keputusan dari 'otak'
         outputs = self.brain.predict(np.array(inputs))
-        turn_left, turn_right = outputs[0], outputs[1]
+        # Ambil 3 output: belok kiri, belok kanan, dan kontrol kecepatan
+        turn_left, turn_right, speed_control = outputs[0], outputs[1], outputs[2]
         
         # 3. Lakukan aksi berdasarkan output
-        turn_strength = (turn_right - turn_left) * 0.1 # sesuaikan kekuatan belok
+        turn_strength = (turn_right - turn_left) * 0.1 # Sesuaikan kekuatan belok
         self.angle += turn_strength
         
-        self.x += KECEPATAN_SEL * math.cos(self.angle)
-        self.y += KECEPATAN_SEL * math.sin(self.angle)
+        # BARU: Otak mengontrol kecepatan
+        # Output speed_control dari -1 (berhenti) hingga 1 (kecepatan penuh)
+        # Kita ubah rentang [-1, 1] menjadi [0, KECEPATAN_MAKS_SEL]
+        current_speed = (speed_control + 1) / 2 * KECEPATAN_MAKS_SEL
+        
+        # Gerakkan sel dengan kecepatan yang dikontrol otak
+        self.x += current_speed * math.cos(self.angle)
+        self.y += current_speed * math.sin(self.angle)
         
         # Batasi pergerakan di dalam layar
         self.x = max(0, min(LEBAR_LAYAR, self.x))
         self.y = max(0, min(TINGGI_LAYAR, self.y))
 
-        # Kurangi energi dan update fitness
-        self.energy -= ENERGI_PER_FRAME
+        # BARU: Kurangi energi berdasarkan kecepatan
+        # Semakin cepat bergerak, semakin banyak energi yang terkuras
+        energy_cost = ENERGI_DIAM + (current_speed / KECEPATAN_MAKS_SEL) * ENERGI_BERGERAK
+        self.energy -= energy_cost
         self.fitness += 1
         
         return "hidup" if self.energy > 0 else "mati"
