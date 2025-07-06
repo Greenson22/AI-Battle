@@ -1,7 +1,7 @@
 # src/simulation/modes.py
 
-import pygame
 import random
+import pygame # <-- Pastikan pygame diimpor
 from settings import *
 from cell import Cell, NeuralNetwork
 from crystal import Crystal
@@ -16,12 +16,16 @@ class TrainingMode(BaseSimulation):
         self.save_indicator_timer = 0
         
         if start_from_scratch:
+            print("Memulai sesi latihan baru dari awal.")
             self.cells = [Cell() for _ in range(JUMLAH_SEL_AWAL)]
         else:
+            print("Mencoba melanjutkan latihan dari file...")
             trained_brains = NeuralNetwork.load_brains(BRAIN_FILE)
             if not trained_brains:
+                print("File otak tidak ditemukan. Memulai dari awal.")
                 self.cells = [Cell() for _ in range(JUMLAH_SEL_AWAL)]
             else:
+                print("Berhasil memuat otak. Melanjutkan latihan...")
                 self.cells = self._create_new_population(trained_brains)
     
     def _handle_key_press(self, event):
@@ -44,9 +48,26 @@ class TrainingMode(BaseSimulation):
         NeuralNetwork.save_brains(BRAIN_FILE, fittest_brains)
         self.save_indicator_timer = 120
 
+    # vvv FUNGSI YANG DIPERBAIKI vvv
     def _draw_info_text(self):
+        # Panggil metode dasar untuk info jumlah sel
         super()._draw_info_text()
-        # ... (Kode untuk info generasi, waktu, dll)
+        
+        # Tambahkan info khusus untuk Mode Latihan
+        info_gen = self.font.render(f"Generasi: {self.generation_count}", True, WARNA_TEKS)
+        info_time = self.font.render(f"Waktu: {self.generation_timer // FRAME_RATE}s", True, WARNA_TEKS)
+        info_save_prompt = self.font.render("Tekan 'S' untuk menyimpan otak", True, WARNA_TEKS)
+        
+        self.screen.blit(info_gen, (10, 10))
+        self.screen.blit(info_time, (10, 70))
+        self.screen.blit(info_save_prompt, (LEBAR_LAYAR - info_save_prompt.get_width() - 10, 10))
+
+        # Tampilkan indikator saat menyimpan
+        if self.save_indicator_timer > 0:
+            save_indicator_text = self.font.render("Otak berhasil disimpan!", True, (100, 255, 100))
+            text_rect = save_indicator_text.get_rect(topright=(LEBAR_LAYAR - 10, 40))
+            self.screen.blit(save_indicator_text, text_rect)
+    # ^^^ FUNGSI YANG DIPERBAIKI ^^^
 
     def _evolve_next_generation(self):
         self.generation_count += 1
@@ -55,9 +76,12 @@ class TrainingMode(BaseSimulation):
         self.cells.sort(key=lambda c: c.fitness, reverse=True)
         num_to_select = int(len(self.cells) * SELECTION_PERCENT)
         fittest_cells = self.cells[:num_to_select]
+        
         if not fittest_cells:
+            print(f"Generasi {self.generation_count-1} punah.")
             self.cells = [Cell() for _ in range(JUMLAH_SEL_AWAL)]
         else:
+            print(f"Generasi {self.generation_count-1} -> {self.generation_count}. {len(fittest_cells)} sel terbaik bertahan.")
             brains = [c.brain for c in fittest_cells]
             self.cells = self._create_new_population(brains)
 
