@@ -12,7 +12,7 @@ WARNA_TEKS = (255, 255, 255)
 
 # --- PENGATURAN SIMULASI & EVOLUSI ---
 JUMLAH_SEL_AWAL = 50
-JUMLAH_RUMPUT = 40  # <-- Diubah dari JUMLAH_KRISTAL
+JUMLAH_RUMPUT = 80
 GENERATION_TIME_SECS = 15  # Detik per generasi
 SELECTION_PERCENT = 0.25  # Persentase sel terbaik yang bertahan
 MUTATION_RATE = 0.1  # 10% kemungkinan mutasi pada setiap bobot
