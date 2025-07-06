@@ -14,6 +14,9 @@ class Cell:
         self.energy: float = ENERGI_AWAL
         self.angle: float = random.uniform(0, 2 * math.pi)
         
+        # --- Perubahan: Tambahkan atribut gender ---
+        self.gender = random.choice(['male', 'female'])
+        
         self.fitness: int = 0
         self.current_speed: float = 0
         
@@ -22,11 +25,18 @@ class Cell:
         self.leg_animation_cycle = random.uniform(0, 360)
         self.leg_length = RADIUS_SEL * 1.5
         self.leg_swing_arc = math.pi / 4
-        self.outline_color = (10, 10, 10)
+
+        # --- Perubahan: Warna berdasarkan gender ---
+        if self.gender == 'male':
+            self.base_color = (60, 180, 255)  # Biru untuk jantan
+            self.outline_color = (10, 50, 100)
+        else:
+            self.base_color = (255, 105, 180) # Pink untuk betina
+            self.outline_color = (100, 20, 60)
 
     def update(self, grass_patches: list, biome: str) -> str:
         """Memperbarui status sel, kini mencari rumput."""
-        inputs = self._get_brain_inputs(grass_patches) # Diubah ke rumput
+        inputs = self._get_brain_inputs(grass_patches)
         outputs = self.brain.predict(np.array(inputs))
         self._process_brain_outputs(outputs, biome)
         self._move()
@@ -70,14 +80,14 @@ class Cell:
 
     def _get_brain_inputs(self, grass_patches: list) -> list:
         """Mengumpulkan data dari rumput terdekat."""
-        nearest_grass = self._find_nearest_grass(grass_patches) # Diubah ke rumput
+        nearest_grass = self._find_nearest_grass(grass_patches)
         if not nearest_grass:
             return [1.0, 0.0, self.energy / ENERGI_AWAL]
         
         dist_x = nearest_grass.x - self.x
         dist_y = nearest_grass.y - self.y
         distance = math.hypot(dist_x, dist_y)
-        angle_to_grass = math.atan2(dist_y, dist_x) # Diubah ke rumput
+        angle_to_grass = math.atan2(dist_y, dist_x)
         
         norm_dist = min(distance, LEBAR_LAYAR) / LEBAR_LAYAR
         angle_diff = (angle_to_grass - self.angle + math.pi) % (2 * math.pi) - math.pi
@@ -111,13 +121,23 @@ class Cell:
         self.fitness += 1
         
     def _draw_body(self, screen: pygame.Surface):
-        pygame.draw.circle(screen, self.outline_color, (int(self.x), int(self.y)), RADIUS_SEL + 1)
+        # --- Perubahan: Menggambar berdasarkan gender ---
         speed_ratio = self.current_speed / KECEPATAN_MAKS_SEL if KECEPATAN_MAKS_SEL > 0 else 0
-        r = int(WARNA_SEL[0] + (255 - WARNA_SEL[0]) * speed_ratio)
-        g = int(WARNA_SEL[1] + (220 - WARNA_SEL[1]) * speed_ratio)
-        b = int(WARNA_SEL[2] + (0 - WARNA_SEL[2]) * speed_ratio)
+        r = int(self.base_color[0] + (255 - self.base_color[0]) * speed_ratio)
+        g = int(self.base_color[1] + (220 - self.base_color[1]) * speed_ratio)
+        b = int(self.base_color[2] + (0 - self.base_color[2]) * speed_ratio)
         current_color = (np.clip(r, 0, 255), np.clip(g, 0, 255), np.clip(b, 0, 255))
-        pygame.draw.circle(screen, current_color, (int(self.x), int(self.y)), RADIUS_SEL)
+
+        if self.gender == 'male':
+            # Gambar elips untuk jantan (lebih lonjong)
+            rect = pygame.Rect(self.x - RADIUS_SEL * 1.2, self.y - RADIUS_SEL * 0.8, RADIUS_SEL * 2.4, RADIUS_SEL * 1.6)
+            pygame.draw.ellipse(screen, self.outline_color, rect.inflate(2, 2))
+            pygame.draw.ellipse(screen, current_color, rect)
+        else:
+            # Gambar lingkaran untuk betina
+            pygame.draw.circle(screen, self.outline_color, (int(self.x), int(self.y)), RADIUS_SEL + 1)
+            pygame.draw.circle(screen, current_color, (int(self.x), int(self.y)), RADIUS_SEL)
+
 
     def _draw_direction_indicator(self, screen: pygame.Surface):
         end_x = self.x + (RADIUS_SEL + 2) * math.cos(self.angle)
