@@ -84,7 +84,7 @@ def main():
                 if math.hypot(cell.x - crystal.x, cell.y - crystal.y) < RADIUS_SEL + RADIUS_KRISTAL:
                     cell.energy = min(ENERGI_AWAL * 2, cell.energy + ENERGI_DARI_KRISTAL)
                     crystals.remove(crystal)
-                    crystals.append(Crystal())
+                    # crystals.append(Crystal())
                     break
 
         # --- Menggambar ---
