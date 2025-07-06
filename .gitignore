@@ -2,3 +2,4 @@
 __pycache__
 /data/fittest_brains.npz
 /data/world.npy
+/data/world.png
