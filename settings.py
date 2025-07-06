@@ -29,6 +29,7 @@ ENERGI_UNTUK_REPRODUKSI = 250  # Energi minimal untuk sel bertahan ke gen beriku
 RADIUS_SEL = 7
 RADIUS_RUMPUT = 5  # <-- Diubah dari RADIUS_KRISTAL
 KECEPATAN_MAKS_SEL = 2
+JARAK_DETEKSI_MAKANAN = 100 # Jarak dalam piksel di mana sel akan mulai 'foraging'
 
 # --- PENGATURAN JARINGAN SARAF (ANN) ---
 # Input: [jarak_rumput, sudut_rumput, energi_sendiri] # <-- Komentar diperbarui
