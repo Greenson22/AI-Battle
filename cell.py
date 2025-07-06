@@ -52,17 +52,21 @@ class Cell:
         self._update_legs()
         return "hidup" if self.is_alive() else "mati"
     
-    # ... (sisa metode draw, _draw_foraging_line, _update_state_from_brain, dll tetap sama) ...
     def draw(self, screen: pygame.Surface, show_debug: bool = False):
         self._draw_legs(screen)
         self._draw_body(screen)
         self._draw_direction_indicator(screen)
+        
+        # --- PERUBAHAN: Pindahkan penggambaran bar ke sini agar tidak tumpang tindih ---
         self._draw_energy_bar(screen)
         
         if show_debug:
             self._draw_state_text(screen)
             self._draw_foraging_line(screen)
+            # --- PERUBAHAN: Tambahkan penggambaran bar fitness ---
+            self._draw_fitness_bar(screen)
 
+    # ... (sisa metode _draw_foraging_line, _update_state_from_brain, dll tetap sama) ...
     def _draw_foraging_line(self, screen: pygame.Surface):
         if self.state == 'foraging' and self.target_grass:
             distance = math.hypot(self.target_grass.x - self.x, self.target_grass.y - self.y)
@@ -162,12 +166,11 @@ class Cell:
             state_multiplier = 2.5
         elif self.state == 'idle':
             state_multiplier = 0.5
-            # --- PERUBAHAN: Kurangi fitness jika terlalu lama diam ---
-            self.fitness -= 2
+            self.fitness -= 0.5
             
         total_energy_cost = base_energy_cost * terrain_modifier['energy_cost'] * state_multiplier
         self.energy -= total_energy_cost
-        self.fitness += 1 # Fitness dasar karena bertahan hidup
+        self.fitness += 1
         
     def _draw_body(self, screen: pygame.Surface):
         # ... (kode _draw_body lainnya tetap sama) ...
@@ -198,7 +201,7 @@ class Cell:
         bar_width = RADIUS_SEL * 2
         bar_height = 4
         bar_x = self.x - RADIUS_SEL
-        bar_y = self.y - RADIUS_SEL - 8
+        bar_y = self.y + RADIUS_SEL + 4 # Sedikit ke bawah agar tidak tumpang tindih
         pygame.draw.rect(screen, (50, 50, 50), (bar_x, bar_y, bar_width, bar_height), border_radius=1)
         r = int(255 * (1 - energy_ratio))
         g = int(255 * energy_ratio)
@@ -206,6 +209,31 @@ class Cell:
         fill_width = bar_width * energy_ratio
         if fill_width > 0:
             pygame.draw.rect(screen, energy_color, (bar_x, bar_y, fill_width, bar_height), border_radius=1)
+
+    # --- PERUBAHAN: Tambahkan metode baru untuk menggambar bar fitness ---
+    def _draw_fitness_bar(self, screen: pygame.Surface):
+        """Menggambar bar yang merepresentasikan skor fitness."""
+        if not self.is_alive(): return
+        
+        # Normalisasi fitness agar visualnya bagus. 
+        # Di sini kita gunakan modulo 1000 agar bar "reset" setelah mencapai 1000.
+        # Anda bisa sesuaikan nilai 1000 ini.
+        normalized_fitness = (self.fitness % 1000) / 1000.0
+        
+        bar_width = RADIUS_SEL * 2
+        bar_height = 4
+        bar_x = self.x - RADIUS_SEL
+        bar_y = self.y + RADIUS_SEL + 10 # Posisikan di bawah bar energi
+        
+        # Latar belakang bar
+        pygame.draw.rect(screen, (50, 50, 50), (bar_x, bar_y, bar_width, bar_height), border_radius=1)
+        
+        # Warna bar (biru ke ungu)
+        fitness_color = (138, 43, 226) # BlueViolet
+        
+        fill_width = bar_width * normalized_fitness
+        if fill_width > 0:
+            pygame.draw.rect(screen, fitness_color, (bar_x, bar_y, fill_width, bar_height), border_radius=1)
 
     def _draw_state_text(self, screen: pygame.Surface):
         # ... (kode _draw_state_text lainnya tetap sama) ...
