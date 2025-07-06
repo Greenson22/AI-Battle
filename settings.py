@@ -34,3 +34,6 @@ KECEPATAN_MAKS_SEL = 2
 NUM_INPUTS = 3
 NUM_HIDDEN = 10
 NUM_OUTPUTS = 3 # Output: [belok_kiri, belok_kanan, kecepatan]
+
+# --- PENGATURAN SIMPAN & MUAT ---
+BRAIN_FILE = 'fittest_brains.npz' # Nama file untuk menyimpan otak terbaik
