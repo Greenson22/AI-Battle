@@ -1,49 +1,42 @@
 # terrain.py
 import pygame
 import numpy as np
-from perlin_noise import PerlinNoise # <- DIUBAH
+from perlin_noise import PerlinNoise
 import os
-from settings import *
+from settings import * # Pastikan semua pengaturan ter-import
 
 class Terrain:
-    def __init__(self, width, height, scale=100.0, octaves=6, persistence=0.5, lacunarity=2.0, seed=None):
+    # vvv UBAH BARIS INI vvv
+    def __init__(self, width, height, scale=TERRAIN_SCALE, octaves=6, persistence=0.5, lacunarity=2.0, seed=None):
+    # ^^^ UBAH BARIS INI ^^^
         self.width = width
         self.height = height
-        # Parameter 'scale', 'persistence', dan 'lacunarity' tidak digunakan langsung
-        # oleh PerlinNoise, tapi kita simpan untuk referensi
-        self.scale = scale 
+        # Parameter 'scale' sekarang menggunakan nilai default dari settings.py
+        self.scale = scale
         self.octaves = octaves
         self.seed = seed if seed is not None else np.random.randint(0, 100)
         self.terrain_map = self.generate_world()
         self.terrain_surface = self.create_terrain_surface()
 
-    # vvv DIUBAH vvv
     def generate_world(self):
-        # Buat instance noise dengan parameter yang sesuai
         noise = PerlinNoise(octaves=self.octaves, seed=self.seed)
         
         world = np.zeros((self.width, self.height))
         for i in range(self.width):
             for j in range(self.height):
-                # Panggil instance noise dengan koordinat yang telah diskalakan
+                # Pemanggilan noise menggunakan self.scale yang sudah diperbarui
                 world[i][j] = noise([i / self.scale, j / self.scale])
                 
-        # Normalisasi nilai noise ke rentang 0-1
         world = (world - np.min(world)) / (np.max(world) - np.min(world))
         return world
-    # ^^^ DIUBAH ^^^
 
+    # ... (sisa kelas tidak berubah) ...
     def get_biome(self, value):
-        if value < TINGKAT_AIR:
-            return 'air'
-        elif value < TINGKAT_PASIR:
-            return 'pasir'
-        elif value < TINGKAT_RUMPUT:
-            return 'rumput'
-        elif value < TINGKAT_HUTAN:
-            return 'hutan'
-        else:
-            return 'batu'
+        if value < TINGKAT_AIR: return 'air'
+        elif value < TINGKAT_PASIR: return 'pasir'
+        elif value < TINGKAT_RUMPUT: return 'rumput'
+        elif value < TINGKAT_HUTAN: return 'hutan'
+        else: return 'batu'
 
     def create_terrain_surface(self):
         surface = pygame.Surface((self.width, self.height))
@@ -59,15 +52,12 @@ class Terrain:
         screen.blit(self.terrain_surface, (0, 0))
 
     def get_terrain_type_at(self, x, y):
-        """Mendapatkan tipe terrain pada koordinat x, y."""
         if 0 <= x < self.width and 0 <= y < self.height:
-            # Pastikan koordinat adalah integer untuk akses indeks
             val = self.terrain_map[int(x)][int(y)]
             return self.get_biome(val)
-        return 'batu' # Default jika di luar batas
+        return 'batu'
 
     def save_world(self, filename="data/world.npy"):
-        # Pastikan direktori 'data' ada
         if not os.path.exists('data'):
             os.makedirs('data')
         np.save(filename, self.terrain_map)

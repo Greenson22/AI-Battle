@@ -36,6 +36,7 @@ NUM_HIDDEN = 10
 NUM_OUTPUTS = 3 # Output: [belok_kiri, belok_kanan, kecepatan]
 
 # --- PENGATURAN TERRAIN ---
+TERRAIN_SCALE = 1000.0  # Nilai asli: 100.0. Coba naikkan ke 250-400 untuk fitur yang lebih besar.
 WARNA_TERRAIN = {
     'air': (40, 120, 180),
     'pasir': (240, 230, 140),
