@@ -70,6 +70,7 @@ class Cell:
             self._draw_state_text(screen)
             self._draw_foraging_line(screen)
             self._draw_fitness_bar(screen)
+            self._draw_terrain_sensors(screen)
 
     # --- FUNGSI DIPERBARUI (HAPUS TANDA KUTIP) ---
     def _get_brain_inputs(self, nearest_grass: Grass, terrain: Terrain) -> list:
@@ -141,7 +142,6 @@ class Cell:
     
     def _update_status(self, terrain_type: str):
         if terrain_type == 'air':
-            self.energy -= ENERGI_TENGGELAM
             self.fitness -= 2
             return
 
@@ -257,3 +257,17 @@ class Cell:
             if distance < JARAK_DETEKSI_MAKANAN:
                 line_color = (255, 255, 0)
                 pygame.draw.line(screen, line_color, (self.x, self.y), (self.target_grass.x, self.target_grass.y), 1)
+
+    def _draw_terrain_sensors(self, screen: pygame.Surface):
+        """Menggambar visualisasi untuk setiap sensor terrain."""
+        for i in range(JUMLAH_SENSOR_TERRAIN):
+            # Hitung posisi sensor (logika yang sama seperti di _get_brain_inputs)
+            sensor_angle = self.angle + (i * (2 * math.pi / JUMLAH_SENSOR_TERRAIN))
+            sensor_x = self.x + JARAK_PENGLIHATAN_SEL * math.cos(sensor_angle)
+            sensor_y = self.y + JARAK_PENGLIHATAN_SEL * math.sin(sensor_angle)
+
+            # Gambar lingkaran kecil di posisi sensor
+            # Warna bisa dibuat dinamis nanti jika perlu, untuk sekarang gunakan putih
+            pygame.draw.circle(screen, (255, 255, 255), (int(sensor_x), int(sensor_y)), 3)
+            # Gambar garis dari pusat sel ke sensor
+            pygame.draw.line(screen, (255, 255, 255, 100), (self.x, self.y), (sensor_x, sensor_y), 1)
