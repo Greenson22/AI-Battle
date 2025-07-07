@@ -49,10 +49,8 @@ class BaseSimulation:
         if event.key == pygame.K_d:
             self.show_debug_text = not self.show_debug_text
 
-    # --- FUNGSI DIPERBARUI ---
     def _update_simulation(self):
         for cell in self.cells[:]:
-            # Panggil 'update' dengan seluruh objek terrain
             if cell.update(self.grass_patches, self.cells, self.terrain) == "mati":
                 self.cells.remove(cell)
             else:
@@ -78,23 +76,18 @@ class BaseSimulation:
             sorted_cells = sorted(self.cells, key=lambda c: c.fitness, reverse=True)
             for i, c in enumerate(self.cells):
                 if hasattr(c, 'outline_color'):
-                    # Reset warna outline default
-                    if c.gender == 'male':
-                        c.outline_color = (10, 50, 100)
-                    else:
-                        c.outline_color = (100, 20, 60)
-
-            # Beri warna khusus untuk 2 sel terbaik
+                    c.outline_color = (10, 50, 100) if c.gender == 'male' else (100, 20, 60)
             if len(sorted_cells) > 0 and hasattr(sorted_cells[0], 'outline_color'):
-                sorted_cells[0].outline_color = (255, 215, 0) # Emas
+                sorted_cells[0].outline_color = (255, 215, 0)
             if len(sorted_cells) > 1 and hasattr(sorted_cells[1], 'outline_color'):
-                sorted_cells[1].outline_color = (192, 192, 192) # Perak
+                sorted_cells[1].outline_color = (192, 192, 192)
         
         for grass in self.grass_patches:
             grass.draw(self.screen)
         
         for cell in self.cells:
-            cell.draw(self.screen, self.show_debug_text)
+            # Mengirim daftar sel untuk keperluan visualisasi debug
+            cell.draw(self.screen, self.show_debug_text, self.cells)
             
         self._draw_info_text()
         pygame.display.flip()
