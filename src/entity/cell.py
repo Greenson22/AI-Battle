@@ -101,7 +101,7 @@ class Cell:
                 if other_cell is self:
                     continue
                 dist_to_other = math.hypot(sensor_x - other_cell.x, sensor_y - other_cell.y)
-                if dist_to_other < JARAK_PENGLIHATAN_SEL:
+                if dist_to_other < RADIUS_SEL:
                     cell_detected = 1.0
                     break 
             cell_sensor_inputs.append(cell_detected)
