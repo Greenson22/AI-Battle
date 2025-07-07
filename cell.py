@@ -1,5 +1,4 @@
 # cell.py
-
 import pygame
 import random
 import math
@@ -66,63 +65,8 @@ class Cell:
             self._draw_foraging_line(screen)
             self._draw_fitness_bar(screen)
 
-    # --- PERUBAHAN: Tambahkan metode baru untuk fitness sosial ---
-    def _update_social_fitness(self, all_cells: list):
-        """Menambah fitness jika sel berkumpul dengan sel lain."""
-        nearby_friends = 0
-        for other_cell in all_cells:
-            if other_cell is self:
-                continue # Jangan hitung diri sendiri
-            
-            distance = math.hypot(self.x - other_cell.x, self.y - other_cell.y)
-            if distance < JARAK_DETEKSI_SOSIAL:
-                nearby_friends += 1
-        
-        # Jika ada lebih dari 5 sel lain di sekitar (total grup 6+), dapatkan bonus
-        if nearby_friends >= 5:
-            self.fitness += BONUS_FITNESS_SOSIAL
 
-    # ... (sisa metode lainnya seperti _draw_foraging_line, _update_state_from_brain, dll tetap sama) ...
-    def _draw_foraging_line(self, screen: pygame.Surface):
-        if self.state == 'foraging' and self.target_grass:
-            distance = math.hypot(self.target_grass.x - self.x, self.target_grass.y - self.y)
-            if distance < JARAK_DETEKSI_MAKANAN:
-                line_color = (255, 255, 0)
-                pygame.draw.line(screen, line_color, (self.x, self.y), (self.target_grass.x, self.target_grass.y), 1)
-
-    def _update_state_from_brain(self, outputs: np.ndarray):
-        state_outputs = outputs[3:]
-        chosen_state_index = np.argmax(state_outputs)
-        self.state = self.possible_states[chosen_state_index]
-
-    def is_alive(self) -> bool:
-        return self.energy > 0
-        
-    def _move(self):
-        self.x += self.current_speed * math.cos(self.angle)
-        self.y += self.current_speed * math.sin(self.angle)
-        self.x = max(0, min(LEBAR_LAYAR, self.x))
-        self.y = max(0, min(TINGGI_LAYAR, self.y))
-
-    def _update_legs(self):
-        animation_speed = self.current_speed * 2.5
-        self.leg_animation_cycle = (self.leg_animation_cycle + animation_speed) % 360
-    
-    def _draw_legs(self, screen: pygame.Surface):
-        leg_color = (40, 40, 40)
-        leg_width = 3
-        current_swing = math.sin(math.radians(self.leg_animation_cycle)) * self.leg_swing_arc
-        
-        angle1 = self.angle + math.pi / 2 + current_swing
-        end_x1 = self.x + self.leg_length * math.cos(angle1)
-        end_y1 = self.y + self.leg_length * math.sin(angle1)
-        pygame.draw.line(screen, leg_color, (self.x, self.y), (end_x1, end_y1), leg_width)
-
-        angle2 = self.angle - math.pi / 2 - current_swing
-        end_x2 = self.x + self.leg_length * math.cos(angle2)
-        end_y2 = self.y + self.leg_length * math.sin(angle2)
-        pygame.draw.line(screen, leg_color, (self.x, self.y), (end_x2, end_y2), leg_width)
-
+    # Kecerdasan Buatan & Pengambilan Keputusan 🧠
     def _get_brain_inputs(self, nearest_grass: Grass) -> list:
         if not nearest_grass:
             return [1.0, 0.0, self.energy / ENERGI_AWAL]
@@ -137,11 +81,7 @@ class Cell:
         norm_angle = angle_diff / math.pi
         norm_energy = self.energy / ENERGI_AWAL
         return [norm_dist, norm_angle, norm_energy]
-
-    def _find_nearest_grass(self, grass_patches: list):
-        if not grass_patches: return None
-        return min(grass_patches, key=lambda g: math.hypot(g.x - self.x, g.y - self.y))
-
+    
     def _process_brain_outputs(self, outputs: np.ndarray, terrain_type: str):
         turn_left, turn_right, speed_control = outputs[:3]
         
@@ -166,7 +106,24 @@ class Cell:
             turn_strength = (turn_right - turn_left) * TURN_STRENGTH * 0.5
             self.angle += turn_strength
             self.current_speed = max_speed_on_terrain
+    
+    def _update_state_from_brain(self, outputs: np.ndarray):
+        state_outputs = outputs[3:]
+        chosen_state_index = np.argmax(state_outputs)
+        self.state = self.possible_states[chosen_state_index]
 
+    def _find_nearest_grass(self, grass_patches: list):
+        if not grass_patches: return None
+        return min(grass_patches, key=lambda g: math.hypot(g.x - self.x, g.y - self.y))
+
+
+    # Aksi & Status Internal ⚡
+    def _move(self):
+        self.x += self.current_speed * math.cos(self.angle)
+        self.y += self.current_speed * math.sin(self.angle)
+        self.x = max(0, min(LEBAR_LAYAR, self.x))
+        self.y = max(0, min(TINGGI_LAYAR, self.y))
+    
     def _update_status(self, terrain_type: str):
         if terrain_type == 'air':
             self.energy -= ENERGI_TENGGELAM
@@ -187,7 +144,27 @@ class Cell:
         total_energy_cost = base_energy_cost * terrain_modifier['energy_cost'] * state_multiplier
         self.energy -= total_energy_cost
         self.fitness += 1
+    
+    def _update_social_fitness(self, all_cells: list):
+        """Menambah fitness jika sel berkumpul dengan sel lain."""
+        nearby_friends = 0
+        for other_cell in all_cells:
+            if other_cell is self:
+                continue # Jangan hitung diri sendiri
+            
+            distance = math.hypot(self.x - other_cell.x, self.y - other_cell.y)
+            if distance < JARAK_DETEKSI_SOSIAL:
+                nearby_friends += 1
         
+        # Jika ada lebih dari 5 sel lain di sekitar (total grup 6+), dapatkan bonus
+        if nearby_friends >= 5:
+            self.fitness += BONUS_FITNESS_SOSIAL
+    
+    def is_alive(self) -> bool:
+        return self.energy > 0
+
+
+    # Visual & Animasi Tubuh 🎨
     def _draw_body(self, screen: pygame.Surface):
         # ... (kode _draw_body tetap sama) ...
         speed_ratio = self.current_speed / KECEPATAN_MAKS_SEL if KECEPATAN_MAKS_SEL > 0 else 0
@@ -203,7 +180,28 @@ class Cell:
         else:
             pygame.draw.circle(screen, self.outline_color, (int(self.x), int(self.y)), RADIUS_SEL + 1)
             pygame.draw.circle(screen, current_color, (int(self.x), int(self.y)), RADIUS_SEL)
+    
+    def _draw_legs(self, screen: pygame.Surface):
+        leg_color = (40, 40, 40)
+        leg_width = 3
+        current_swing = math.sin(math.radians(self.leg_animation_cycle)) * self.leg_swing_arc
+        
+        angle1 = self.angle + math.pi / 2 + current_swing
+        end_x1 = self.x + self.leg_length * math.cos(angle1)
+        end_y1 = self.y + self.leg_length * math.sin(angle1)
+        pygame.draw.line(screen, leg_color, (self.x, self.y), (end_x1, end_y1), leg_width)
 
+        angle2 = self.angle - math.pi / 2 - current_swing
+        end_x2 = self.x + self.leg_length * math.cos(angle2)
+        end_y2 = self.y + self.leg_length * math.sin(angle2)
+        pygame.draw.line(screen, leg_color, (self.x, self.y), (end_x2, end_y2), leg_width)
+    
+    def _update_legs(self):
+        animation_speed = self.current_speed * 2.5
+        self.leg_animation_cycle = (self.leg_animation_cycle + animation_speed) % 360
+    
+
+    # Elemen UI & Debugging 📊
     def _draw_direction_indicator(self, screen: pygame.Surface):
         # ... (kode _draw_direction_indicator tetap sama) ...
         end_x = self.x + (RADIUS_SEL + 2) * math.cos(self.angle)
@@ -225,7 +223,7 @@ class Cell:
         fill_width = bar_width * energy_ratio
         if fill_width > 0:
             pygame.draw.rect(screen, energy_color, (bar_x, bar_y, fill_width, bar_height), border_radius=1)
-
+    
     def _draw_fitness_bar(self, screen: pygame.Surface):
         # ... (kode _draw_fitness_bar tetap sama) ...
         if not self.is_alive(): return
@@ -258,3 +256,11 @@ class Cell:
         pygame.draw.rect(screen, (0, 0, 0, 128), bg_rect, border_radius=3)
 
         screen.blit(text_surface, text_rect)
+    
+    # ... (sisa metode lainnya seperti _draw_foraging_line, _update_state_from_brain, dll tetap sama) ...
+    def _draw_foraging_line(self, screen: pygame.Surface):
+        if self.state == 'foraging' and self.target_grass:
+            distance = math.hypot(self.target_grass.x - self.x, self.target_grass.y - self.y)
+            if distance < JARAK_DETEKSI_MAKANAN:
+                line_color = (255, 255, 0)
+                pygame.draw.line(screen, line_color, (self.x, self.y), (self.target_grass.x, self.target_grass.y), 1)
