@@ -3,7 +3,7 @@
 import random
 import pygame # <-- Pastikan pygame diimpor
 from settings import *
-from cell import Cell, NeuralNetwork
+from src.entity.cell import Cell, NeuralNetwork
 from src.simulation.base_simulation import BaseSimulation
 
 class TrainingMode(BaseSimulation):
